@@ -17,14 +17,16 @@ In Supabase dashboard → **SQL Editor** → **New query** → paste the content
 
 You should see tables appear under **Table Editor**: `profiles`, `dealers`, `social_accounts`, `listings`, `listing_photos`, `favorites`, `import_jobs`, `chats`, `messages`.
 
-## 3. Get an Anthropic API key for AI extraction
+## 3. Get a Groq API key for AI extraction (free tier)
 
-1. Go to https://console.anthropic.com → **API Keys** → **Create key**.
-2. Copy the key (starts with `sk-ant-...`).
+1. Go to https://console.groq.com → sign up (Google login works, no payment method needed).
+2. **API Keys** → **Create API Key** → copy the `gsk_…` key.
+
+Groq's free tier gives you generous rate limits and runs Llama 3.3 70B — fast and good enough for caption extraction.
 
 In Supabase dashboard → **Project Settings → Edge Functions → Secrets** → add:
-- Name: `ANTHROPIC_API_KEY`
-- Value: your `sk-ant-...` key
+- Name: `GROQ_API_KEY`
+- Value: your `gsk_...` key
 
 ## 4. Deploy the Edge Function
 
@@ -82,6 +84,6 @@ The `-c` clears Metro's cache so the new env vars are picked up.
 ## Common issues
 
 - **"EXPO_PUBLIC_SUPABASE_URL is not set"** in console → restart with `npx expo start -c`. Env vars only load at boot.
-- **"Failed to fetch" or 401** when extracting → confirm `ANTHROPIC_API_KEY` is set in Supabase secrets, and the function was deployed (`supabase functions list`).
+- **"Failed to fetch" or 401** when extracting → confirm `GROQ_API_KEY` is set in Supabase secrets, and the function was deployed (`supabase functions list`).
 - **"new row violates row-level security"** → you're not signed in. Sign up first.
 - **Email confirmations** are on by default. Either click the link in your inbox or turn confirmations off in **Authentication → Providers → Email** for dev.

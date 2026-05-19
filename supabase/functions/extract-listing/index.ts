@@ -1,10 +1,12 @@
-// Supabase Edge Function: extract a car listing from a social post URL/caption.
-// Calls Claude API with the caption (and optional photo URL) and returns
-// structured fields {make, model, year, km, price_eur, ...}.
+// Supabase Edge Function: extract a car listing from a social post caption.
+// Calls Groq (free tier, OpenAI-compatible API) with Llama 3.3 70B and
+// returns structured fields {make, model, year, km, price_eur, ...}.
 //
 // Deploy:
 //   supabase functions deploy extract-listing
-//   supabase secrets set ANTHROPIC_API_KEY=sk-ant-...
+//   supabase secrets set GROQ_API_KEY=gsk_...
+//
+// Get a free key at https://console.groq.com (no payment method needed).
 
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from 'jsr:@supabase/supabase-js@2';
@@ -32,9 +34,9 @@ type Extraction = {
   notes: string[];
 };
 
-const EXTRACTION_PROMPT = `You are an extraction tool that reads a car listing post (caption text and optionally a photo) and returns structured JSON.
+const EXTRACTION_PROMPT = `You are an extraction tool that reads a car listing caption from Instagram or Facebook and returns structured JSON.
 
-Return ONLY valid JSON, no prose. Schema:
+Return ONLY valid JSON (no markdown, no prose). Schema:
 {
   "make": string | null,
   "model": string | null,
@@ -46,16 +48,17 @@ Return ONLY valid JSON, no prose. Schema:
   "fuel": "petrol"|"diesel"|"hybrid"|"electric"|"lpg"|null,
   "city": string | null,
   "description": string | null,
-  "confidence": number,  // 0-100 overall
-  "notes": string[]      // any caveats e.g. "price not stated"
+  "confidence": number,
+  "notes": string[]
 }
 
 Rules:
-- Convert mileage to km (1 mile = 1.609 km), strip units, return integer.
-- Convert prices to EUR integer. If not in EUR, convert at a rough rate (USD/AED ~0.92x to EUR, GBP 1.17x). Note the source currency in "notes".
-- If a field is uncertain, return null and add a note explaining why.
-- Confidence reflects how sure you are overall (0=guessing, 100=explicit).
-- Description: 1-2 sentence summary suitable for a marketplace listing, rewritten from the caption.`;
+- Convert mileage to km integer (1 mile = 1.609 km). Strip units.
+- Convert prices to EUR integer. Approx rates: USD/AED ~0.92 to EUR, GBP ~1.17. Note source currency in "notes".
+- If a field is uncertain, use null and explain in "notes".
+- Confidence: 0-100 overall (0=guessing, 100=explicit in caption).
+- Description: 1-2 sentence marketplace blurb derived from the caption.
+- Common car nicknames: M3 Comp = BMW M3 Competition. C-Class AMG = Mercedes C-Class AMG. RS6 Avant = Audi RS6 Avant.`;
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -74,13 +77,12 @@ Deno.serve(async (req) => {
   if (!body.dealer_id) return json({ error: 'dealer_id required' }, 400);
   if (!body.caption && !body.url) return json({ error: 'caption or url required' }, 400);
 
-  const apiKey = Deno.env.get('ANTHROPIC_API_KEY');
-  if (!apiKey) return json({ error: 'ANTHROPIC_API_KEY not set' }, 500);
+  const apiKey = Deno.env.get('GROQ_API_KEY');
+  if (!apiKey) return json({ error: 'GROQ_API_KEY not set' }, 500);
 
   const supa = supabaseFromReq(req);
   if (!supa) return json({ error: 'unauthorized' }, 401);
 
-  // Create the queued job row
   const { data: job, error: jobErr } = await supa
     .from('import_jobs')
     .insert({
@@ -94,10 +96,9 @@ Deno.serve(async (req) => {
     .single();
   if (jobErr) return json({ error: jobErr.message }, 500);
 
-  // Call Claude
   let extraction: Extraction;
   try {
-    extraction = await extractWithClaude(apiKey, body.caption ?? '', body.photo_url);
+    extraction = await extractWithGroq(apiKey, body.caption ?? '');
   } catch (err) {
     await supa
       .from('import_jobs')
@@ -106,7 +107,6 @@ Deno.serve(async (req) => {
     return json({ error: `extraction failed: ${err}` }, 502);
   }
 
-  // Decide ready vs review
   const needsReview =
     extraction.confidence < 80 ||
     extraction.make == null ||
@@ -128,32 +128,27 @@ Deno.serve(async (req) => {
   return json({ job: updated, extraction });
 });
 
-async function extractWithClaude(apiKey: string, caption: string, photoUrl?: string): Promise<Extraction> {
-  type Block = { type: 'text'; text: string } | { type: 'image'; source: { type: 'url'; url: string } };
-  const content: Block[] = [];
-  if (photoUrl) content.push({ type: 'image', source: { type: 'url', url: photoUrl } });
-  content.push({
-    type: 'text',
-    text: `Caption:\n"""${caption}"""\n\nReturn the JSON now.`,
-  });
-
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
+async function extractWithGroq(apiKey: string, caption: string): Promise<Extraction> {
+  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
+      'authorization': `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      model: 'claude-sonnet-4-6',
+      model: 'llama-3.3-70b-versatile',
+      temperature: 0.1,
       max_tokens: 800,
-      system: EXTRACTION_PROMPT,
-      messages: [{ role: 'user', content }],
+      response_format: { type: 'json_object' },
+      messages: [
+        { role: 'system', content: EXTRACTION_PROMPT },
+        { role: 'user', content: `Caption:\n"""${caption}"""\n\nReturn the JSON now.` },
+      ],
     }),
   });
-  if (!res.ok) throw new Error(`anthropic ${res.status}: ${await res.text()}`);
+  if (!res.ok) throw new Error(`groq ${res.status}: ${await res.text()}`);
   const data = await res.json();
-  const text: string = data?.content?.[0]?.text ?? '';
+  const text: string = data?.choices?.[0]?.message?.content ?? '';
 
   const match = text.match(/\{[\s\S]*\}/);
   if (!match) throw new Error('no JSON in response');
