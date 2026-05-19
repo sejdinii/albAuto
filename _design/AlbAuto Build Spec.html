@@ -1,0 +1,1123 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>AlbAuto · Build Specification</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --gold: #F5A623;
+    --gold-dark: #D88B0A;
+    --gold-tint: #FFF6E0;
+    --ink: #0F0F10;
+    --body: #4A4A4D;
+    --muted: #8A8780;
+    --hairline: #ECE9E0;
+    --bg: #FAFAF7;
+    --surface: #FFFFFF;
+    --green: #1FAE6B;
+    --red: #E14B4B;
+    --blue: #2E7DEB;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--ink); font-family: 'Manrope', system-ui, sans-serif; font-size: 15px; line-height: 1.6; -webkit-font-smoothing: antialiased; }
+  *::-webkit-scrollbar { display: none; width: 0; height: 0; }
+  * { scrollbar-width: none; -ms-overflow-style: none; }
+  code, pre { font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 12.5px; }
+  .layout { display: grid; grid-template-columns: 260px minmax(0, 1fr); max-width: 1280px; margin: 0 auto; min-height: 100vh; }
+  /* Sidebar */
+  aside { padding: 32px 0 40px; border-right: 1px solid var(--hairline); position: sticky; top: 0; height: 100vh; overflow-y: auto; }
+  aside .brand { padding: 0 28px 18px; display: flex; align-items: center; gap: 10px; }
+  aside .logo { width: 26px; height: 26px; border-radius: 7px; background: var(--gold); display: flex; align-items: center; justify-content: center; box-shadow: inset 0 -2px 0 rgba(0,0,0,0.15); }
+  aside .logo div { width: 14px; height: 5px; background: var(--ink); border-radius: 1px; }
+  aside h4 { font-size: 10px; font-weight: 800; letter-spacing: 1.2px; text-transform: uppercase; color: var(--muted); margin: 18px 28px 6px; }
+  aside a { display: block; padding: 5px 28px; color: var(--body); text-decoration: none; font-size: 13px; font-weight: 500; border-left: 2px solid transparent; }
+  aside a:hover { color: var(--ink); background: var(--gold-tint); }
+  aside a.active { color: var(--ink); font-weight: 700; border-left-color: var(--gold); background: var(--gold-tint); }
+  /* Main */
+  main { padding: 40px 56px 120px; max-width: 880px; }
+  h1 { font-size: 42px; letter-spacing: -1.2px; font-weight: 800; line-height: 1.1; margin: 0 0 6px; }
+  h2 { font-size: 28px; letter-spacing: -0.6px; font-weight: 800; line-height: 1.15; margin: 56px 0 12px; padding-top: 8px; scroll-margin-top: 32px; }
+  h2 .eyebrow { display: block; font-size: 11px; color: var(--muted); font-family: 'JetBrains Mono', monospace; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; margin-bottom: 6px; }
+  h3 { font-size: 18px; letter-spacing: -0.3px; font-weight: 800; margin: 32px 0 8px; scroll-margin-top: 32px; }
+  h4 { font-size: 14px; font-weight: 800; margin: 18px 0 4px; letter-spacing: -0.1px; }
+  p { margin: 0 0 12px; color: var(--body); }
+  ul, ol { margin: 0 0 14px; padding-left: 22px; color: var(--body); }
+  li { margin: 2px 0; }
+  li::marker { color: var(--gold-dark); }
+  hr { border: 0; border-top: 1px solid var(--hairline); margin: 40px 0; }
+  /* Inline */
+  code { background: var(--surface); border: 1px solid var(--hairline); padding: 1px 6px; border-radius: 4px; font-size: 12px; color: var(--ink); }
+  pre { background: var(--ink); color: #e8e6e0; padding: 16px 18px; border-radius: 10px; overflow-x: auto; font-size: 12px; line-height: 1.55; margin: 12px 0 16px; }
+  pre code { background: transparent; border: none; padding: 0; color: inherit; }
+  /* Hero */
+  .hero { margin-top: 14px; padding: 28px 28px 24px; border-radius: 18px; background: var(--ink); color: #fff; position: relative; overflow: hidden; }
+  .hero svg.bg-car { position: absolute; bottom: -20px; right: -30px; width: 360px; opacity: 0.6; }
+  .hero .eyebrow { font-size: 11px; color: var(--gold); font-family: 'JetBrains Mono', monospace; letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 14px; }
+  .hero h1 { color: var(--gold); }
+  .hero p { color: rgba(255,255,255,0.7); margin-top: 14px; max-width: 460px; }
+  .hero .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-top: 28px; padding-top: 22px; border-top: 1px solid rgba(255,255,255,0.08); position: relative; }
+  .hero .stats > div div:first-child { font-size: 10px; color: rgba(255,255,255,0.45); font-family: 'JetBrains Mono', monospace; letter-spacing: 1px; }
+  .hero .stats > div div:last-child { font-size: 22px; font-weight: 800; color: #fff; font-family: 'JetBrains Mono', monospace; letter-spacing: -0.8px; margin-top: 4px; }
+  /* Pills */
+  .pill { display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border-radius: 99px; font-size: 11px; font-weight: 700; font-family: 'JetBrains Mono', monospace; letter-spacing: 0.3px; vertical-align: middle; }
+  .pill.gold { background: var(--gold-tint); color: var(--gold-dark); }
+  .pill.green { background: #E1F5EB; color: var(--green); }
+  .pill.red { background: #FCE6E6; color: var(--red); }
+  .pill.blue { background: #E2EDFE; color: var(--blue); }
+  .pill.gray { background: #EFEDE6; color: var(--body); }
+  .pill.ink { background: var(--ink); color: var(--gold); }
+  /* Cards */
+  .card { background: var(--surface); border: 1px solid var(--hairline); border-radius: 14px; padding: 18px 20px; margin: 14px 0; }
+  .card h4 { margin-top: 0; }
+  .card h4 + p { margin-top: 4px; }
+  /* Grid of cards */
+  .cards-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 14px 0; }
+  .cards-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin: 14px 0; }
+  /* Specific blocks */
+  .endpoint { display: flex; gap: 10px; align-items: baseline; padding: 8px 0; border-bottom: 1px solid var(--hairline); font-family: 'JetBrains Mono', monospace; font-size: 12.5px; }
+  .endpoint:last-child { border-bottom: none; }
+  .method { padding: 2px 7px; border-radius: 4px; font-size: 10px; font-weight: 800; letter-spacing: 0.6px; font-family: 'JetBrains Mono', monospace; }
+  .method.get { background: #E2EDFE; color: var(--blue); }
+  .method.post { background: #E1F5EB; color: var(--green); }
+  .method.put { background: #FFF1D1; color: var(--gold-dark); }
+  .method.patch { background: #FFE9B8; color: var(--gold-dark); }
+  .method.del { background: #FCE6E6; color: var(--red); }
+  .endpoint .path { color: var(--ink); font-weight: 600; }
+  .endpoint .desc { color: var(--muted); margin-left: auto; font-size: 12px; font-family: 'Manrope', sans-serif; }
+  /* Table */
+  table { border-collapse: collapse; width: 100%; font-size: 13px; margin: 12px 0 16px; }
+  th, td { padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--hairline); }
+  th { font-weight: 800; color: var(--ink); font-size: 11px; letter-spacing: 0.4px; text-transform: uppercase; background: var(--surface); }
+  td { color: var(--body); }
+  td code { font-size: 11.5px; }
+  /* Screen block */
+  .screen { border: 1px solid var(--hairline); border-radius: 14px; padding: 16px 20px; margin: 16px 0; background: var(--surface); }
+  .screen header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .screen header .route { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--gold-dark); background: var(--gold-tint); padding: 2px 7px; border-radius: 4px; font-weight: 700; }
+  .screen header h4 { margin: 0; font-size: 15px; }
+  .screen header .meta { margin-left: auto; font-size: 11px; color: var(--muted); font-family: 'JetBrains Mono', monospace; }
+  .screen p { margin-top: 4px; font-size: 13px; }
+  .screen ul { font-size: 13px; padding-left: 18px; }
+  .screen .row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+  /* Header bar */
+  .doc-header { display: flex; align-items: center; gap: 12px; padding-bottom: 24px; border-bottom: 1px solid var(--hairline); margin-bottom: 24px; }
+  .doc-header .ver { margin-left: auto; padding: 4px 10px; border-radius: 6px; background: var(--gold-tint); color: var(--gold-dark); font-size: 11px; font-weight: 800; font-family: 'JetBrains Mono', monospace; }
+  .doc-header a { color: var(--ink); font-size: 13px; font-weight: 700; padding: 6px 12px; border-radius: 8px; border: 1px solid var(--hairline); text-decoration: none; }
+  .doc-header a:hover { background: var(--surface); }
+  /* Notes */
+  .note { padding: 14px 16px; border-radius: 10px; background: var(--gold-tint); border-left: 3px solid var(--gold); margin: 14px 0; font-size: 13px; }
+  .note strong { color: var(--ink); }
+  .note.danger { background: #FCE6E6; border-left-color: var(--red); color: var(--red); }
+  .note.green { background: #E1F5EB; border-left-color: var(--green); color: #0a5a37; }
+  /* Code section toggle (read-only here) */
+  .scrollspy-anchor { display: block; height: 0; visibility: hidden; }
+  details { border: 1px solid var(--hairline); border-radius: 10px; padding: 10px 14px; margin: 10px 0; background: var(--surface); }
+  summary { font-weight: 700; cursor: pointer; font-size: 13px; }
+  details[open] summary { margin-bottom: 8px; }
+  /* Responsive */
+  @media (max-width: 900px) {
+    .layout { grid-template-columns: 1fr; }
+    aside { position: static; height: auto; border-right: none; border-bottom: 1px solid var(--hairline); }
+    main { padding: 24px; }
+    .cards-2, .cards-3 { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="layout">
+  <aside>
+    <div class="brand">
+      <div class="logo"><div></div></div>
+      <div>
+        <div style="font-size:14px; font-weight:800; letter-spacing:-0.2px;">AlbAuto</div>
+        <div style="font-size:10px; color: var(--muted); font-family: 'JetBrains Mono', monospace;">Build spec · v1.0</div>
+      </div>
+    </div>
+    <h4>Overview</h4>
+    <a href="#summary">Summary</a>
+    <a href="#stack">Tech stack</a>
+    <a href="#design-system">Design system</a>
+    <h4>Architecture</h4>
+    <a href="#ia">App map</a>
+    <a href="#data-models">Data models</a>
+    <a href="#api">REST API</a>
+    <a href="#realtime">Realtime / sockets</a>
+    <a href="#auth">Auth &amp; permissions</a>
+    <h4>Screens</h4>
+    <a href="#onboarding">Onboarding &amp; auth</a>
+    <a href="#home-flows">Home &amp; search</a>
+    <a href="#browse-flows">Browse · Balkans &amp; Import</a>
+    <a href="#listing-detail">Listing detail</a>
+    <a href="#saved-flows">Saved, compare, history</a>
+    <a href="#sell-flow">Sell flow</a>
+    <a href="#dealer-flows">Dealer · social auto-import</a>
+    <a href="#chat-flows">Chat &amp; offers</a>
+    <a href="#profile-flows">Profile, financing, booking</a>
+    <h4>Systems</h4>
+    <a href="#background-jobs">Background jobs</a>
+    <a href="#ai">AI &amp; ML</a>
+    <a href="#notifications">Push notifications</a>
+    <a href="#integrations">3rd-party integrations</a>
+    <a href="#storage">Storage &amp; CDN</a>
+    <a href="#admin">Admin &amp; moderation</a>
+    <a href="#analytics">Analytics events</a>
+    <a href="#i18n">Localization</a>
+    <a href="#a11y">Accessibility</a>
+    <a href="#perf">Performance budgets</a>
+    <h4>Delivery</h4>
+    <a href="#milestones">Milestones</a>
+    <a href="#open-questions">Open questions</a>
+  </aside>
+
+  <main>
+    <div class="doc-header">
+      <div>
+        <div style="font-size: 11px; color: var(--muted); font-family: 'JetBrains Mono', monospace; letter-spacing: 1px; text-transform: uppercase;">Build specification</div>
+        <div style="font-size: 22px; font-weight: 800; letter-spacing: -0.4px;">Handoff to engineering</div>
+      </div>
+      <a href="AlbAuto Prototype.html">↗ Open prototype</a>
+      <a href="AlbAuto.html">◳ Design canvas</a>
+      <div class="ver">v1.0 · May 2026</div>
+    </div>
+
+    <div class="hero">
+      <svg class="bg-car" viewBox="0 0 200 100"><path d="M20 70 Q22 55 38 50 L70 42 Q90 36 110 38 L140 42 Q160 46 170 56 L185 60 Q190 62 188 70 L182 78 L168 78 Q166 86 158 86 Q150 86 148 78 L60 78 Q58 86 50 86 Q42 86 40 78 L28 78 Q18 76 20 70 Z" fill="#F5A623"/></svg>
+      <div class="eyebrow">AlbAuto · Car marketplace · Balkans + worldwide import</div>
+      <h1>The Balkan car<br/>marketplace, built right.</h1>
+      <p>iOS &amp; Android marketplace for buying and selling cars across Macedonia, Albania and Kosovo — with international import flows and a dealer auto-import system that turns Instagram and Facebook posts into live listings.</p>
+      <div class="stats">
+        <div><div>SCREENS</div><div>36</div></div>
+        <div><div>FLOWS</div><div>9</div></div>
+        <div><div>API ROUTES</div><div>~70</div></div>
+        <div><div>USER ROLES</div><div>4</div></div>
+      </div>
+    </div>
+
+    <span id="summary" class="scrollspy-anchor"></span>
+    <h2><span class="eyebrow">01</span>Summary</h2>
+    <p>AlbAuto is a cross-platform mobile marketplace optimised for the Balkan region (North Macedonia, Albania, Kosovo) with a parallel Cars-for-Import flow covering Europe, Asia and Americas. The buyer surface is a tab-bar app with Home, Saved, Sell, Chats and Menu. The seller surface adds a multi-step posting flow with free and Top-Ad placement. The dealer surface adds a social-auto-import system (Instagram + Facebook), AI-assisted listing creation, and an analytics dashboard.</p>
+    <p>This document is the engineering brief: it lists every screen, component, data model, API endpoint, background job and integration the implementation requires. Where the design implies a system (rate limits, idempotency, offline behaviour, etc.) the requirement is called out explicitly.</p>
+
+    <div class="cards-2">
+      <div class="card"><h4>Primary jobs-to-be-done</h4>
+        <ul>
+          <li>Find a car within my country / city / budget</li>
+          <li>Import a car from abroad with cost transparency</li>
+          <li>Talk to the seller safely without giving up my phone</li>
+          <li>Sell my car in under 5 minutes</li>
+          <li>Dealer: post inventory <em>once</em>, on Instagram, and have it live everywhere</li>
+        </ul>
+      </div>
+      <div class="card"><h4>Non-goals (v1)</h4>
+        <ul>
+          <li>End-to-end checkout / escrow payments</li>
+          <li>Auctions / bidding format</li>
+          <li>Parts and accessories</li>
+          <li>Insurance issuance (calculator only)</li>
+          <li>Cross-border car shipping logistics</li>
+        </ul>
+      </div>
+    </div>
+
+    <span id="stack" class="scrollspy-anchor"></span>
+    <h2><span class="eyebrow">02</span>Tech stack</h2>
+    <table>
+      <thead><tr><th style="width:160px">Layer</th><th>Choice</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td>Mobile</td><td><code>React Native 0.74+</code></td><td>Expo SDK 51 acceptable. <code>react-navigation/native-stack</code> for routing, <code>react-native-reanimated</code> + <code>moti</code> for motion, <code>nativewind</code> or styled-components for styling.</td></tr>
+        <tr><td>API</td><td><code>Node 20 · Fastify</code> + <code>Zod</code> schemas</td><td>OpenAPI generated from Zod. tRPC acceptable if team prefers types over docs.</td></tr>
+        <tr><td>DB</td><td><code>PostgreSQL 16</code> · <code>Prisma</code></td><td>PostGIS for geo (city/country bounds + radius search). Read replica for listing search.</td></tr>
+        <tr><td>Cache / queues</td><td><code>Redis 7</code> · <code>BullMQ</code></td><td>Hot listing cache, rate limit counters, social-sync job queue.</td></tr>
+        <tr><td>Search</td><td><code>Typesense</code> or <code>Meilisearch</code></td><td>Facet-heavy queries (make/model/year/price/specs). Avoid Postgres-only full-text past ~50k listings.</td></tr>
+        <tr><td>Realtime</td><td><code>Socket.io</code> over Node</td><td>Chat, typing indicators, online status, listing-view counters.</td></tr>
+        <tr><td>Object storage</td><td><code>S3</code>-compatible (Cloudflare R2)</td><td>Per-listing folders, signed-URL uploads from mobile, image variants generated by worker.</td></tr>
+        <tr><td>CDN / images</td><td><code>imgproxy</code> behind Cloudflare</td><td>On-the-fly resize, WebP/AVIF, smart crop.</td></tr>
+        <tr><td>Auth</td><td><code>Lucia</code> + Postgres sessions</td><td>Phone OTP via Twilio Verify; Apple &amp; Google for one-tap.</td></tr>
+        <tr><td>AI / vision</td><td><code>OpenAI gpt-4o-mini</code> + <code>CLIP</code> via Replicate</td><td>License-plate &amp; mileage OCR via <code>Google Cloud Vision</code>.</td></tr>
+        <tr><td>Push</td><td><code>FCM</code> + <code>APNs</code></td><td>Topic-based for system-wide; tokenised for chats.</td></tr>
+        <tr><td>Observability</td><td><code>OpenTelemetry</code> → <code>Grafana Cloud</code></td><td>Sentry for mobile crashes; tracing on every social-sync job.</td></tr>
+      </tbody>
+    </table>
+
+    <span id="design-system" class="scrollspy-anchor"></span>
+    <h2><span class="eyebrow">03</span>Design system</h2>
+    <p>Reuse the existing token set verbatim — copying these into the RN theme is the fastest path to visual parity with the prototype.</p>
+    <h4>Colour</h4>
+    <table>
+      <thead><tr><th>Token</th><th>Hex</th><th>Usage</th></tr></thead>
+      <tbody>
+        <tr><td><code>gold</code></td><td><code>#F5A623</code></td><td>Primary CTAs, brand mark, premium / verified badges, price emphasis</td></tr>
+        <tr><td><code>gold-dark</code></td><td><code>#D88B0A</code></td><td>Hovered/pressed primary, gold text on light bg</td></tr>
+        <tr><td><code>gold-tint</code></td><td><code>#FFF6E0</code></td><td>Selected list rows, soft callouts, AI hints</td></tr>
+        <tr><td><code>ink</code></td><td><code>#0F0F10</code></td><td>Primary text, dark surfaces, secondary CTAs</td></tr>
+        <tr><td><code>body</code></td><td><code>#4A4A4D</code></td><td>Body copy</td></tr>
+        <tr><td><code>muted</code></td><td><code>#8A8780</code></td><td>Captions, placeholders, dividers</td></tr>
+        <tr><td><code>hairline</code></td><td><code>#ECE9E0</code></td><td>1px borders, separators</td></tr>
+        <tr><td><code>bg</code></td><td><code>#FAFAF7</code></td><td>App background</td></tr>
+        <tr><td><code>green</code></td><td><code>#1FAE6B</code></td><td>WhatsApp CTA, verification, "ready" status, price drops</td></tr>
+        <tr><td><code>red</code></td><td><code>#E14B4B</code></td><td>Destructive, errors, favourite-filled</td></tr>
+        <tr><td><code>blue</code></td><td><code>#2E7DEB</code></td><td>Inspected badge, information</td></tr>
+      </tbody>
+    </table>
+    <h4>Type</h4>
+    <p>Manrope (400 / 500 / 600 / 700 / 800) for everything except prices, specs, IDs and statuses — those use JetBrains Mono. Default body = 14/1.5; tabular numbers required on prices.</p>
+    <h4>Radii &amp; shadows</h4>
+    <p><code>sm=8</code> · <code>md=12</code> · <code>lg=16</code> · <code>xl=22</code>. Shadow scale: <code>card</code> (1+4px elev), <code>elev</code> (24px), <code>sticky</code> (–4px upward).</p>
+    <h4>Atoms</h4>
+    <ul>
+      <li><code>&lt;Icon name size color strokeWidth fill /&gt;</code> — 36+ named icons, all stroke 1.8 by default</li>
+      <li><code>&lt;Button variant="primary|dark|outline|soft|ghost|green|danger" size="sm|md|lg" icon iconRight full /&gt;</code></li>
+      <li><code>&lt;Badge color fg icon size /&gt;</code></li>
+      <li><code>&lt;Field label value icon placeholder rightLabel error focused /&gt;</code></li>
+      <li><code>&lt;SelectField label value /&gt;</code></li>
+      <li><code>&lt;CarCardSmall|Medium|Listing car /&gt;</code></li>
+      <li><code>&lt;CarPhoto hue label height count badge /&gt;</code> placeholder; real images go through <code>&lt;CdnImage&gt;</code></li>
+      <li><code>&lt;StatusBar /&gt;</code> <code>&lt;TopBar /&gt;</code> <code>&lt;TabBar /&gt;</code> <code>&lt;HomeIndicator /&gt;</code></li>
+    </ul>
+
+    <span id="ia" class="scrollspy-anchor"></span>
+    <h2><span class="eyebrow">04</span>App map</h2>
+    <p>Five-tab bottom nav across every authenticated screen. The Sell tab is a CTA, not a tab; it opens the sell flow as a modal stack.</p>
+    <div class="cards-3">
+      <div class="card"><h4>① Home</h4><p>Search · two category cards · For-you carousel · New listings 3-col grid · Notifications bell</p></div>
+      <div class="card"><h4>② Saved</h4><p>Cars · Saved searches · Compare slots · Recently viewed</p></div>
+      <div class="card"><h4>③ Sell (CTA)</h4><p>Modal stack · 5 steps · Standard or Top Ad</p></div>
+      <div class="card"><h4>④ Chats</h4><p>Buyer/seller threads · offers · safety reminders · unread counter on tab</p></div>
+      <div class="card"><h4>⑤ Menu</h4><p>Profile · settings · my ads · my searches · financing · appointments · dealer tools</p></div>
+    </div>
+    <h3>Modal &amp; sheet stacks</h3>
+    <ul>
+      <li><strong>Sell flow</strong> · type → form → photos → summary → ad options → published</li>
+      <li><strong>Filters sheet</strong> · half-sheet from listings</li>
+      <li><strong>Auth</strong> · pre-tabbar, welcome → login / signup → OTP → home</li>
+      <li><strong>Dealer onboarding</strong> · social-connect → permissions → importing → imported inventory → AI review</li>
+      <li><strong>Buyer tools</strong> · financing calculator (per listing), appointment booking (per listing), compare (multi-listing)</li>
+    </ul>
+
+    <span id="data-models" class="scrollspy-anchor"></span>
+    <h2><span class="eyebrow">05</span>Data models</h2>
+    <p>Prisma-shaped schemas. Fields prefixed <code>?</code> are nullable. IDs are <code>cuid2</code>.</p>
+
+    <h3>User</h3>
+<pre><code>model User {
+  id            String   @id @default(cuid2())
+  phoneE164     String   @unique
+  email         String?  @unique
+  passwordHash  String?
+  fullName      String
+  avatarUrl     String?
+  countryCode   String   // "MK" | "AL" | "XK" | "DE" | ...
+  cityId        String?
+  locale        String   @default("en")   // "sq" | "mk" | "sr" | "en"
+  role          UserRole @default(BUYER)  // BUYER | SELLER | DEALER | ADMIN
+  verifiedAt    DateTime?
+  trustScore    Int      @default(0)      // 0-100, computed
+  reputation    Json     @default("{}")   // {sold, bought, avgRating, reviewCount}
+  preferences   Json     @default("{}")   // {locale, currency, units, pushTopics[]}
+  createdAt     DateTime @default(now())
+  bannedAt      DateTime?
+}</code></pre>
+
+    <h3>Dealer</h3>
+<pre><code>model Dealer {
+  id             String  @id
+  ownerId        String  @unique           // FK User
+  legalName      String
+  vatId          String?
+  verifiedStatus VerifiedStatus  // PENDING | VERIFIED | REJECTED
+  plan           DealerPlan      // FREE | PRO | ENTERPRISE
+  city           City
+  socialAccounts SocialAccount[]
+  rating         Decimal? @db.Decimal(3,2)
+  reviewCount    Int      @default(0)
+  inventory      Listing[]
+}</code></pre>
+
+    <h3>Listing</h3>
+<pre><code>model Listing {
+  id            String   @id
+  publicCode    String   @unique  // "ALB-228714"
+  sellerId      String
+  dealerId      String?
+  status        ListingStatus  // DRAFT | PENDING_REVIEW | ACTIVE | RESERVED | SOLD | EXPIRED | REJECTED
+  market        Market         // BALKANS | IMPORT
+  country       String
+  cityId        String
+  continent     String?        // when market = IMPORT
+  make          String
+  model         String
+  trim          String?
+  bodyType      BodyType
+  year          Int
+  mileageKm     Int
+  fuel          Fuel
+  drive         Drive
+  transmission  Transmission
+  exteriorColor String?
+  interiorColor String?
+  horsepower    Int?
+  regionalSpecs String?        // "GCC", "EU", "Albanian", "JDM", ...
+  vin           String?  @db.Citext
+  priceEur      Decimal  @db.Decimal(10,2)
+  priceCurrency String   @default("EUR")
+  pricePolicy   PricePolicy  // FIXED | NEGOTIABLE | POA
+  warranty      Boolean  @default(false)
+  serviceContract Boolean @default(false)
+  inspected     Boolean  @default(false)
+  inspectionUrl String?
+  description   String   @db.Text
+  features      String[] @default([])
+  photos        Photo[]
+  videoUrl      String?
+  premium       Boolean  @default(false)
+  premiumUntil  DateTime?
+  source        Source   @default(MANUAL) // MANUAL | INSTAGRAM | FACEBOOK | IMPORT_CSV
+  sourceMeta    Json?     // {postId, postUrl, importedAt, aiConfidence}
+  views         Int      @default(0)
+  saveCount     Int      @default(0)
+  publishedAt   DateTime?
+  expiresAt     DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  @@index([country, cityId, make, model, status])
+  @@index([premium, publishedAt])
+}</code></pre>
+
+    <h3>Photo, SocialAccount, ImportJob, Chat, Message, Offer, Favorite, SavedSearch, Appointment, Notification, FinancingQuote, Report</h3>
+<pre><code>model Photo {
+  id        String @id
+  listingId String
+  url       String  // original (S3)
+  variants  Json    // {sm, md, lg, av1} URLs
+  width     Int
+  height    Int
+  order     Int     @default(0)
+  isCover   Boolean @default(false)
+  source    Source  @default(MANUAL)
+}
+
+model SocialAccount {
+  id            String @id
+  dealerId      String
+  provider      SocialProvider  // INSTAGRAM | FACEBOOK
+  providerId    String          // IG/FB business account id
+  handle        String
+  accessToken   String          // encrypted at rest (libsodium sealed box)
+  refreshToken  String?
+  tokenExpiresAt DateTime?
+  scopes        String[]
+  lastSyncedAt  DateTime?
+  syncCursor    String?         // last seen post id
+  status        SocialStatus    // CONNECTED | REAUTH_REQUIRED | DISCONNECTED
+  @@unique([dealerId, provider, providerId])
+}
+
+model ImportJob {
+  id            String @id
+  socialAccountId String
+  postId        String
+  postUrl       String
+  caption       String?  @db.Text
+  mediaUrls     String[]
+  extractedJson Json     // AI output
+  confidence    Json     // per-field 0-100
+  listingId     String?  // null until approved
+  status        ImportStatus  // PENDING | READY | REVIEW | DUPLICATE | SKIPPED | PUBLISHED | FAILED
+  errorReason   String?
+  createdAt     DateTime @default(now())
+  reviewedAt    DateTime?
+}
+
+model Chat {
+  id          String @id
+  listingId   String
+  buyerId     String
+  sellerId    String
+  buyerReadAt  DateTime?
+  sellerReadAt DateTime?
+  archivedBy   String[] @default([])
+  createdAt    DateTime @default(now())
+  @@unique([listingId, buyerId])  // one chat per buyer per listing
+}
+
+model Message {
+  id        String @id
+  chatId    String
+  senderId  String
+  body      String? @db.Text
+  mediaUrl  String?
+  kind      MessageKind  // TEXT | IMAGE | LISTING_REF | OFFER | SYSTEM
+  meta      Json?         // offer payload, etc.
+  readBy    String[] @default([])
+  createdAt DateTime @default(now())
+  @@index([chatId, createdAt])
+}
+
+model Offer {
+  id           String @id
+  chatId       String
+  fromUserId   String
+  amountEur    Decimal @db.Decimal(10,2)
+  status       OfferStatus  // OPEN | COUNTERED | ACCEPTED | DECLINED | EXPIRED
+  expiresAt    DateTime
+  counterOfTeamId String?
+}
+
+model Favorite { userId String; listingId String; createdAt DateTime; @@id([userId, listingId]) }
+
+model SavedSearch {
+  id        String @id
+  userId    String
+  name      String
+  filters   Json   // FilterSpec — see API section
+  frequency SearchFreq  // INSTANT | DAILY | WEEKLY
+  lastNotifiedAt DateTime?
+  newMatchCount  Int @default(0)
+}
+
+model Appointment {
+  id         String @id
+  listingId  String
+  buyerId    String
+  startsAt   DateTime
+  duration   Int    // minutes
+  kind       AptKind  // TEST_DRIVE | INSPECTION
+  location   String?  // override seller default
+  status     AptStatus  // PENDING | CONFIRMED | DECLINED | CANCELLED | COMPLETED
+  buyerNote  String?
+  sellerNote String?
+}
+
+model Notification {
+  id        String @id
+  userId    String
+  kind      NotifKind  // PRICE_DROP | CHAT | MATCH | AD_VIEW | SYSTEM | OFFER
+  title     String
+  body      String
+  meta      Json?      // { listingId, chatId, ... }
+  readAt    DateTime?
+  createdAt DateTime @default(now())
+}
+
+model FinancingQuote {
+  id          String @id
+  userId      String
+  listingId   String
+  priceEur    Decimal
+  downPayment Decimal
+  termMonths  Int
+  apr         Decimal
+  monthly     Decimal
+  partner     String  // "NLB" | "ProCredit" | "OTP"
+  preApproved Boolean @default(false)
+}
+
+model Report {
+  id        String @id
+  reporterId String
+  targetType ReportTarget  // LISTING | USER | MESSAGE
+  targetId   String
+  reason     ReportReason
+  details    String?
+  status     ReportStatus  // OPEN | REVIEWING | RESOLVED | DISMISSED
+  createdAt  DateTime
+}</code></pre>
+
+    <h3>Reference data</h3>
+    <ul>
+      <li><code>Country</code> (iso2, name, currency, defaultCallingCode, region [BALKAN | EU | ASIA | AMERICAS | OTHER])</li>
+      <li><code>City</code> (id, name, countryCode, geo (PostGIS point))</li>
+      <li><code>Make</code>, <code>Model</code> (model FK make; both have isActive flag)</li>
+      <li><code>Trim</code> (model FK)</li>
+      <li><code>Feature</code> i18n labels (curated taxonomy)</li>
+    </ul>
+
+    <span id="api" class="scrollspy-anchor"></span>
+    <h2><span class="eyebrow">06</span>REST API</h2>
+    <p>Versioned at <code>/v1</code>. All authenticated routes require a session cookie or <code>Authorization: Bearer &lt;jwt&gt;</code>. Idempotency key on every mutation.</p>
+
+    <h3>Auth</h3>
+    <div class="card">
+      <div class="endpoint"><span class="method post">POST</span><span class="path">/v1/auth/start</span><span class="desc">{ phoneE164 } → { challengeId }</span></div>
+      <div class="endpoint"><span class="method post">POST</span><span class="path">/v1/auth/verify</span><span class="desc">{ challengeId, code } → { session }</span></div>
+      <div class="endpoint"><span class="method post">POST</span><span class="path">/v1/auth/oauth/:provider</span><span class="desc">apple | google · { idToken }</span></div>
+      <div class="endpoint"><span class="method post">POST</span><span class="path">/v1/auth/signup</span><span class="desc">{ phoneE164, email, fullName, password, locale, country }</span></div>
+      <div class="endpoint"><span class="method post">POST</span><span class="path">/v1/auth/forgot</span><span class="desc">{ email | phoneE164 } — sends reset code</span></div>
+      <div class="endpoint"><span class="method post">POST</span><span class="path">/v1/auth/logout</span></div>
+    </div>
+
+    <h3>Reference / catalog</h3>
+    <div class="card">
+      <div class="endpoint"><span class="method get">GET</span><span class="path">/v1/ref/countries</span><span class="desc">?region=BALKAN|EU|... — i18n names</span></div>
+      <div class="endpoint"><span class="method get">GET</span><span class="path">/v1/ref/cities</span><span class="desc">?country=MK — top-N + search</span></div>
+      <div class="endpoint"><span class="method get">GET</span><span class="path">/v1/ref/makes</span><span class="desc">?popular=true</span></div>
+      <div class="endpoint"><span class="method get">GET</span><span class="path">/v1/ref/makes/:id/models</span></div>
+      <div class="endpoint"><span class="method get">GET</span><span class="path">/v1/ref/trims</span><span class="desc">?model=…</span></div>
+      <div class="endpoint"><span class="method get">GET</span><span class="path">/v1/ref/features</span></div>
+    </div>
+
+    <h3>Listings</h3>
+    <div class="card">
+      <div class="endpoint"><span class="method get">GET</span><span class="path">/v1/listings</span><span class="desc">filters &amp; pagination — see <code>FilterSpec</code> below</span></div>
+      <div class="endpoint"><span class="method get">GET</span><span class="path">/v1/listings/:id</span></div>
+      <div class="endpoint"><span class="method get">GET</span><span class="path">/v1/listings/:id/similar</span><span class="desc">≤ 6 results, same make/body, ±2 yrs</span></div>
+      <div class="endpoint"><span class="method get">GET</span><span class="path">/v1/listings/:id/finance-estimate</span><span class="desc">?down=&amp;term=&amp;apr=</span></div>
+      <div class="endpoint"><span class="method post">POST</span><span class="path">/v1/listings/draft</span><span class="desc">create empty draft</span></div>
+      <div class="endpoint"><span class="method patch">PATCH</span><span class="path">/v1/listings/:id</span><span class="desc">partial updates during sell flow</span></div>
+      <div class="endpoint"><span class="method post">POST</span><span class="path">/v1/listings/:id/photos</span><span class="desc">multipart — returns variants when worker done</span></div>
+      <div class="endpoint"><span class="method del">DEL</span><span class="path">/v1/listings/:id/photos/:photoId</span></div>
+      <div class="endpoint"><span class="method post">POST</span><span class="path">/v1/listings/:id/publish</span><span class="desc">{ tier: "STANDARD" | "TOP_AD" } — returns paymentIntent if TOP_AD</span></div>
+      <div class="endpoint"><span class="method post">POST</span><span class="path">/v1/listings/:id/boost</span><span class="desc">extend Top Ad</span></div>
+      <div class="endpoint"><span class="method post">POST</span><span class="path">/v1/listings/:id/mark-sold</span></div>
+      <div class="endpoint"><span class="method post">POST</span><span class="path">/v1/listings/:id/report</span></div>
+    </div>
+
+    <h3>FilterSpec (shared between <code>/listings</code> and <code>SavedSearch</code>)</h3>
+<pre><code>type FilterSpec = {
+  q?: string;                     // free text — search by make/model/VIN/description
+  market?: "BALKANS" | "IMPORT";
+  countries?: string[];           // ISO2
+  cities?: string[];
+  continents?: string[];          // import only
+  makes?: string[];
+  models?: string[];
+  trims?: string[];
+  bodyTypes?: BodyType[];
+  fuels?: Fuel[];
+  drives?: Drive[];
+  transmissions?: Transmission[];
+  yearMin?: number; yearMax?: number;
+  mileageMaxKm?: number;
+  priceMinEur?: number; priceMaxEur?: number;
+  hasWarranty?: boolean;
+  hasService?: boolean;
+  inspectedOnly?: boolean;
+  verifiedSellerOnly?: boolean;
+  premiumFirst?: boolean;         // default true
+  sort?: "RELEVANCE" | "PRICE_ASC" | "PRICE_DESC" | "YEAR_DESC" | "MILEAGE_ASC" | "NEWEST";
+  page?: number; pageSize?: number;
+}</code></pre>
+
+    <h3>Saved searches &amp; favorites</h3>
+    <div class="card">
+      <div class="endpoint"><span class="method post">POST</span><span class="path">/v1/saved-searches</span></div>
+      <div class="endpoint"><span class="method get">GET</span><span class="path">/v1/saved-searches</span></div>
+      <div class="endpoint"><span class="method patch">PATCH</span><span class="path">/v1/saved-searches/:id</span></div>
+      <div class="endpoint"><span class="method del">DEL</span><span class="path">/v1/saved-searches/:id</span></div>
+      <div class="endpoint"><span class="method post">POST</span><span class="path">/v1/favorites/:listingId</span></div>
+      <div class="endpoint"><span class="method del">DEL</span><span class="path">/v1/favorites/:listingId</span></div>
+      <div class="endpoint"><span class="method get">GET</span><span class="path">/v1/favorites</span></div>
+      <div class="endpoint"><span class="method get">GET</span><span class="path">/v1/recently-viewed</span><span class="desc">last 30 · synced from device + server side</span></div>
+      <div class="endpoint"><span class="method post">POST</span><span class="path">/v1/compare</span><span class="desc">{ listingIds: [..] } — server hydrates spec rows</span></div>
+    </div>
+
+    <h3>Chat &amp; offers</h3>
+    <div class="card">
+      <div class="endpoint"><span class="method get">GET</span><span class="path">/v1/chats</span><span class="desc">?role=buyer|seller|unread</span></div>
+      <div class="endpoint"><span class="method get">GET</span><span class="path">/v1/chats/:id/messages</span><span class="desc">cursor-paginated</span></div>
+      <div class="endpoint"><span class="method post">POST</span><span class="path">/v1/chats/:id/messages</span><span class="desc">{ body? mediaUrl? kind? meta? }</span></div>
+      <div class="endpoint"><span class="method post">POST</span><span class="path">/v1/chats/:id/read</span></div>
+      <div class="endpoint"><span class="method post">POST</span><span class="path">/v1/chats/:id/offer</span><span class="desc">{ amountEur, expiresInH }</span></div>
+      <div class="endpoint"><span class="method post">POST</span><span class="path">/v1/offers/:id/accept</span></div>
+      <div class="endpoint"><span class="method post">POST</span><span class="path">/v1/offers/:id/counter</span><span class="desc">{ amountEur }</span></div>
+      <div class="endpoint"><span class="method post">POST</span><span class="path">/v1/offers/:id/decline</span></div>
+    </div>
+
+    <h3>Dealer · social automation</h3>
+    <div class="card">
+      <div class="endpoint"><span class="method post">POST</span><span class="path">/v1/dealer/social/connect/:provider</span><span class="desc">OAuth code exchange — IG or FB</span></div>
+      <div class="endpoint"><span class="method del">DEL</span><span class="path">/v1/dealer/social/:accountId</span></div>
+      <div class="endpoint"><span class="method post">POST</span><span class="path">/v1/dealer/social/:accountId/sync</span><span class="desc">manual nudge; default sync runs on webhook + cron</span></div>
+      <div class="endpoint"><span class="method get">GET</span><span class="path">/v1/dealer/imports</span><span class="desc">?status=READY|REVIEW|DUPLICATE|SKIPPED</span></div>
+      <div class="endpoint"><span class="method get">GET</span><span class="path">/v1/dealer/imports/:id</span></div>
+      <div class="endpoint"><span class="method patch">PATCH</span><span class="path">/v1/dealer/imports/:id</span><span class="desc">edit AI-extracted fields before publish</span></div>
+      <div class="endpoint"><span class="method post">POST</span><span class="path">/v1/dealer/imports/:id/approve</span><span class="desc">→ creates Listing</span></div>
+      <div class="endpoint"><span class="method post">POST</span><span class="path">/v1/dealer/imports/:id/skip</span></div>
+      <div class="endpoint"><span class="method post">POST</span><span class="path">/v1/dealer/imports/bulk-publish</span><span class="desc">{ ids: [..] }</span></div>
+      <div class="endpoint"><span class="method get">GET</span><span class="path">/v1/dealer/dashboard</span><span class="desc">stats: listings, views, chats, response time, top listings</span></div>
+    </div>
+
+    <h3>Misc</h3>
+    <div class="card">
+      <div class="endpoint"><span class="method get">GET</span><span class="path">/v1/notifications</span></div>
+      <div class="endpoint"><span class="method post">POST</span><span class="path">/v1/notifications/read-all</span></div>
+      <div class="endpoint"><span class="method post">POST</span><span class="path">/v1/appointments</span></div>
+      <div class="endpoint"><span class="method get">GET</span><span class="path">/v1/appointments</span></div>
+      <div class="endpoint"><span class="method post">POST</span><span class="path">/v1/appointments/:id/respond</span></div>
+      <div class="endpoint"><span class="method post">POST</span><span class="path">/v1/finance/estimate</span></div>
+      <div class="endpoint"><span class="method post">POST</span><span class="path">/v1/finance/preapprove</span><span class="desc">partner lender hand-off</span></div>
+      <div class="endpoint"><span class="method post">POST</span><span class="path">/v1/users/me/avatar</span></div>
+      <div class="endpoint"><span class="method patch">PATCH</span><span class="path">/v1/users/me</span></div>
+      <div class="endpoint"><span class="method post">POST</span><span class="path">/v1/users/me/verify</span><span class="desc">submit ID + selfie</span></div>
+    </div>
+
+    <span id="realtime" class="scrollspy-anchor"></span>
+    <h2><span class="eyebrow">07</span>Realtime / sockets</h2>
+    <p>Socket.io namespace <code>/realtime</code>. Per-user room <code>u:&lt;userId&gt;</code>, per-chat room <code>c:&lt;chatId&gt;</code>.</p>
+    <table>
+      <thead><tr><th>Event</th><th>Direction</th><th>Payload</th></tr></thead>
+      <tbody>
+        <tr><td><code>message:new</code></td><td>server → client</td><td><code>{ chatId, message }</code></td></tr>
+        <tr><td><code>message:read</code></td><td>both</td><td><code>{ chatId, userId, upToMessageId }</code></td></tr>
+        <tr><td><code>typing</code></td><td>both</td><td><code>{ chatId, userId, isTyping }</code></td></tr>
+        <tr><td><code>presence</code></td><td>server → client</td><td><code>{ userId, online, lastSeen }</code></td></tr>
+        <tr><td><code>offer:update</code></td><td>server → client</td><td><code>{ offer }</code></td></tr>
+        <tr><td><code>listing:view</code></td><td>client → server</td><td><code>{ listingId }</code> — drives view counter</td></tr>
+        <tr><td><code>import:progress</code></td><td>server → client (dealer)</td><td><code>{ jobId, processed, total, lastEvent }</code></td></tr>
+      </tbody>
+    </table>
+
+    <span id="auth" class="scrollspy-anchor"></span>
+    <h2><span class="eyebrow">08</span>Auth &amp; permissions</h2>
+    <p>Three actor types in the mobile app, plus an admin web console.</p>
+    <table>
+      <thead><tr><th>Role</th><th>Can</th><th>Cannot</th></tr></thead>
+      <tbody>
+        <tr><td><code>BUYER</code></td><td>browse, favourite, chat with seller, save searches, request appointment, request finance</td><td>publish listings beyond personal allowance (3 active)</td></tr>
+        <tr><td><code>SELLER</code> (individual)</td><td>everything in BUYER + up to <strong>3 active listings</strong>, sell flow, mark sold</td><td>connect social accounts</td></tr>
+        <tr><td><code>DEALER</code></td><td>everything in SELLER + unlimited listings, social auto-import, analytics dashboard, multiple social accounts</td><td>—</td></tr>
+        <tr><td><code>ADMIN</code></td><td>web console only — moderation, verification, refunds, ban</td><td>impersonate without audit log</td></tr>
+      </tbody>
+    </table>
+    <h4>Verification</h4>
+    <p>Submit national ID (front + back) + selfie. Run liveness check + OCR. Async review by admin if confidence &lt; 0.8. Verified users get the gold tick badge; required for Top-Ad placement and dealer mode.</p>
+    <h4>Sessions</h4>
+    <p>Rolling 30-day cookie; absolute 90-day limit. Refresh on every authenticated request. Force re-auth on phone-number change. Provide "log out everywhere" in settings (revokes all sessions for user).</p>
+
+    <span id="onboarding" class="scrollspy-anchor"></span>
+    <h2><span class="eyebrow">09</span>Onboarding &amp; auth screens</h2>
+
+    <div class="screen">
+      <header><span class="route">welcome</span><h4>Welcome</h4><span class="meta">Public · entry</span></header>
+      <p>Hero gradient + animated car silhouette. Three CTAs (email signup, Apple, Google) plus inline log-in link.</p>
+      <ul>
+        <li>Tracks <code>welcome_view</code>, <code>welcome_cta_tap{provider}</code>.</li>
+        <li>Pre-fills phone country code from device locale.</li>
+        <li>Skip-to-browse mode (<span class="pill gold">A/B</span>) — guests can browse with chat &amp; favourite blocked until signup. Recommended for v1.</li>
+      </ul>
+    </div>
+
+    <div class="screen">
+      <header><span class="route">login</span><h4>Log in</h4><span class="meta">Public · email/password OR social</span></header>
+      <p>Email + password fields. Inline error on <code>401</code>. Forgot-password link calls <code>/v1/auth/forgot</code>. Rate limit 5 attempts / 15 min by IP + email.</p>
+    </div>
+
+    <div class="screen">
+      <header><span class="route">signup</span><h4>Sign up · step 1</h4><span class="meta">Public</span></header>
+      <p>Full name, email, phone (E.164), password. Inline validation. Submits → server creates pending user, sends OTP via Twilio Verify. Note about phone privacy is permanent (not dismissible).</p>
+    </div>
+
+    <div class="screen">
+      <header><span class="route">otp</span><h4>OTP verification</h4><span class="meta">Public · post-signup OR phone change</span></header>
+      <p>6-digit code, 60s expiry, resend cooldown 28s. SMS auto-fill (RN <code>useOtp</code> hook → SMS Retriever API on Android, AppDelegate handler on iOS). On success: session issued, route to <code>home</code>.</p>
+    </div>
+
+    <span id="home-flows" class="scrollspy-anchor"></span>
+    <h2><span class="eyebrow">10</span>Home &amp; search</h2>
+
+    <div class="screen">
+      <header><span class="route">home</span><h4>Home</h4><span class="meta">Auth · tab 1</span></header>
+      <p>Header (logo, notif bell w/ unread dot, avatar). Search bar (placeholder cycles popular terms). Two category cards (Balkans → <code>balkan-countries</code>, Import → <code>continent</code>). "For you" carousel (3-up, server-personalised). "New listings" 3-col grid with city filter chip.</p>
+      <ul>
+        <li><strong>Data:</strong> <code>GET /v1/listings?sort=NEWEST&amp;pageSize=12</code> and <code>GET /v1/recommendations</code>.</li>
+        <li><strong>Empty state:</strong> if recommendations &lt; 3, fall back to global new listings.</li>
+        <li><strong>Skeleton:</strong> 3 grey rectangles in each of the 3 sections; ≤ 600ms target.</li>
+        <li><strong>Pull-to-refresh</strong> reloads recommendations + new listings.</li>
+      </ul>
+    </div>
+
+    <div class="screen">
+      <header><span class="route">search</span><h4>Search · suggestions overlay</h4></header>
+      <p>Focus on search bar opens this. Suggestions: typed matches (make/model + location), AI smart-prompt ("BMW M3 under €80k" → applies filters), and similar-model fallback. Recent searches persist per device + sync to <code>/v1/users/me/search-history</code>.</p>
+    </div>
+
+    <div class="screen">
+      <header><span class="route">notifications</span><h4>Notifications</h4></header>
+      <p>Chip filters: All, Listings, Chats, Price drops, System. Each card has icon, title, body, relative time. Tapping routes to the relevant deep link (listing/chat/saved-search).</p>
+    </div>
+
+    <span id="browse-flows" class="scrollspy-anchor"></span>
+    <h2><span class="eyebrow">11</span>Browse · Balkans &amp; Import</h2>
+    <p>Both flows reuse the same <strong>select-list</strong> component (back arrow, centred title, search icon, "All …" row with gold tick, scrollable items with optional flag, count badge, divider).</p>
+
+    <h3>Balkans flow (6 steps)</h3>
+    <ol>
+      <li><code>balkan-countries</code> — North Macedonia, Albania, Kosovo. "All in Balkan Countries" default.</li>
+      <li><code>balkan-cities</code> — list per country with search.</li>
+      <li><code>makes</code> — popular grid (8 logos) + A–Z list. Sticky alpha index optional.</li>
+      <li><code>models</code> — make-scoped, with count per model.</li>
+      <li><code>listings</code> — list view (see below).</li>
+      <li><code>detail</code> — listing detail (see below).</li>
+    </ol>
+
+    <h3>Import flow (7 steps)</h3>
+    <ol>
+      <li><code>continent</code> — Europe, Asia, Americas.</li>
+      <li><code>eu-countries</code> — country list per continent.</li>
+      <li>City → Make → Model → Listings → Detail (same as Balkans 2–6).</li>
+    </ol>
+
+    <div class="screen">
+      <header><span class="route">listings</span><h4>Listings</h4></header>
+      <p>Sticky filter chip row (Filters with count badge, Trim ▾, Price ▾, Year ▾, Specs ▾). Sort &amp; Save Search affordances. Each listing card: gallery dots, share + heart, premium badge, trust badges (warranty / service / inspected), location, Chat (gold) + WhatsApp (green) actions.</p>
+      <h4>Pagination &amp; perf</h4>
+      <ul>
+        <li>Cursor-based infinite scroll, 20 per page.</li>
+        <li>Premium ads injected at positions 1, 7, 14 of every page (server-side decision).</li>
+        <li>Save-search FAB once filters touched; opens <code>saved-searches/new</code> sheet.</li>
+        <li>Card images use <code>imgproxy</code> 2x density variants.</li>
+      </ul>
+    </div>
+
+    <div class="screen">
+      <header><span class="route">filters</span><h4>Filters sheet (half-screen)</h4></header>
+      <p>Price range with mini histogram (real-time over current result set), year chips, body type grid, fuel chips, more (drive, transmission, colour, warranty, verified seller). Footer: Save search + Show N cars.</p>
+    </div>
+
+    <span id="listing-detail" class="scrollspy-anchor"></span>
+    <h2><span class="eyebrow">12</span>Listing detail</h2>
+    <div class="screen">
+      <header><span class="route">detail</span><h4>Car ad detail</h4><span class="meta">Public · gated chat</span></header>
+      <p>Full-bleed photo gallery with swipeable carousel + counter (e.g. 2/11), back arrow, share, favourite. Sheet below shows make · model · trim eyebrow, year + km, price block in ink with EUR + secondary currency. Trust pill row, location row with relative posted time. Overview grid (8 specs). Seller card with verified badge + rating. Sticky bottom action bar: Call (gold), WhatsApp (green), Chat (ink).</p>
+      <h4>Behaviours</h4>
+      <ul>
+        <li>Phone reveal: tap Call → shows confirm sheet ("Reveal Andrej M.'s number?") → logs <code>phone_revealed</code> + opens dialer.</li>
+        <li>WhatsApp: deep-links <code>wa.me/&lt;number&gt;?text=&lt;encoded VIN + listing link&gt;</code>.</li>
+        <li>Chat: opens or creates a Chat between buyer and seller, prefilled with a <code>LISTING_REF</code> system message.</li>
+        <li>Similar listings rail at bottom of scroll (calls <code>/listings/:id/similar</code>).</li>
+        <li>Report ad in 3-dot menu → opens <code>report</code> modal.</li>
+        <li>If listing.status = SOLD: actions disabled, banner "Sold — see similar".</li>
+      </ul>
+    </div>
+
+    <span id="saved-flows" class="scrollspy-anchor"></span>
+    <h2><span class="eyebrow">13</span>Saved · Compare · Searches · History</h2>
+
+    <div class="screen">
+      <header><span class="route">favorites</span><h4>Saved</h4><span class="meta">tab 2</span></header>
+      <p>Three sub-tabs: Cars (2-col grid), Searches, Compare. Each saved car card supports swipe-to-remove (web: long-press menu). Heart tap pulls optimistic update + retries on offline.</p>
+    </div>
+
+    <div class="screen">
+      <header><span class="route">compare</span><h4>Compare (≤ 4 cars)</h4></header>
+      <p>2 cards on screen at once, horizontal swipe to reveal others. Spec rows: Price, Year, Mileage, HP, 0–100, Body, Drive, Warranty. Best-of-row highlighted gold. AI summary card at bottom (1–2 sentences synthesised by gpt-4o-mini against the structured specs).</p>
+    </div>
+
+    <div class="screen">
+      <header><span class="route">saved-searches</span><h4>Saved searches</h4></header>
+      <p>Card per search with thumbnail (hue from dominant make), title, filters summary, match count + alert frequency. NEW badge counts unread matches. Bell toggles instant/daily/weekly; trash deletes. Empty state explains alerts.</p>
+    </div>
+
+    <div class="screen">
+      <header><span class="route">recent</span><h4>Recently viewed</h4></header>
+      <p>Time-grouped (Today, Yesterday, This week, Earlier). Price-drop pill if current price &lt; first-seen price. Tapping a row jumps to detail. Clear All in the trailing slot.</p>
+    </div>
+
+    <span id="sell-flow" class="scrollspy-anchor"></span>
+    <h2><span class="eyebrow">14</span>Sell flow (individual)</h2>
+    <p>5-step modal stack initiated from the centre Sell tab. Drafts persist (autosave every form blur). Resumable from a "Drafts" banner on Home.</p>
+    <ol>
+      <li><code>sell-type</code> — Balkans vs Import. Big card with stat (active sellers in market). "MOST COMMON" badge on Balkans. Dealer affordance pinned at bottom.</li>
+      <li><em>(Conditional)</em> location selectors — country &amp; city, no "All" option.</li>
+      <li><code>sell-form</code> — required fields with breadcrumb. AI-paste-IG-link affordance offered.</li>
+      <li><code>sell-photos</code> — 4-min, 8-rec photo upload; cover assignable; optional walkaround video (≤ 30 s, ≤ 50 MB); IG import shortcut.</li>
+      <li><code>sell-summary</code> — Read-only review with Edit jumps to relevant step; AI-suggested description; phone confirmation.</li>
+      <li><code>sell-options</code> — Standard (free) pre-selected; Top Ad (€49 / 7 d) with sample card preview &amp; bullet benefits.</li>
+      <li><code>sell-pub</code> — Confetti + summary card + View / Boost CTAs.</li>
+    </ol>
+    <div class="note"><strong>Payments:</strong> Top Ad checkout uses Stripe Checkout (cards) + bank transfer fallback (manual approval). On webhook <code>checkout.session.completed</code>, listing gets <code>premium=true</code>, <code>premiumUntil</code> set, push notification "Your ad is now Top Ad".</div>
+    <h4>Validation</h4>
+    <ul>
+      <li>Mileage 0–1 000 000; year 1950–current+1.</li>
+      <li>Price: warn if &gt; 2× or &lt; 0.5× median for that make/model/year.</li>
+      <li>At least 4 photos required to publish.</li>
+      <li>VIN optional but, if provided, validated against 17-char ISO 3779 + checksum.</li>
+    </ul>
+
+    <span id="dealer-flows" class="scrollspy-anchor"></span>
+    <h2><span class="eyebrow">15</span>Dealer · social auto-import ⚡</h2>
+    <p>The product's moat. Goal: a dealer connects Instagram once, then their next post becomes a draft listing within 60s.</p>
+    <ol>
+      <li><code>social-connect</code> — header card explains the value. Provider list with status pill (Synced, Re-auth needed, Connect). Multi-account support — "+ Add another business account".</li>
+      <li><code>perms</code> — OAuth consent screen styled in-app for trust. List of scopes requested (read media, receive webhooks, no DMs, no follower data). Continue → routes to provider OAuth (Meta system browser).</li>
+      <li><code>importing</code> — live progress card (X of Y), activity feed of AI events. Note that user can leave; sync continues in background.</li>
+      <li><code>imported</code> — status-filterable list: Ready (✓), Needs review (⚠), Duplicate (=), Skipped. Bulk-publish ready batch via footer CTA.</li>
+      <li><code>ai-review</code> — single post review with source preview (image + caption), auto-filled fields with confidence %, manual override, suggestions for missing fields ("€38k — based on 12 similar listings"). Approve → publish.</li>
+      <li><code>dealer-dash</code> — stat cards (active, views/week, chats, response time), sync status, 14-day views chart, top listings.</li>
+    </ol>
+
+    <h3>Sync architecture</h3>
+    <pre><code>// On connect
+1. OAuth exchange → store access + refresh tokens (encrypted)
+2. Subscribe to Meta webhook for /media, /comments
+3. Schedule initial backfill: fetch last 90 days of posts
+4. Enqueue extract job per post
+
+// Per-post extract pipeline (BullMQ "import" queue)
+post.fetched → media downloaded to R2
+            → vision OCR (mileage from photo, plate masking)
+            → caption + first-image into gpt-4o-mini:
+                "Extract {make, model, year, trim, body, fuel,
+                 transmission, price, mileage, location} as JSON"
+            → per-field confidence
+            → dedupe (VIN | (make+model+trim+year+within 5% price))
+            → status: READY (≥ 0.85 avg) | REVIEW (0.6-0.85) | SKIPPED (no car detected) | DUPLICATE
+
+// Updates
+webhook(media.deleted) → mark linked Listing as SOLD (if dealer opted-in)
+webhook(media.updated) → re-extract, diff against current Listing, surface in REVIEW
+</code></pre>
+
+    <h3>Failure modes &amp; UX</h3>
+    <ul>
+      <li><strong>Token expired</strong> → set <code>SocialAccount.status = REAUTH_REQUIRED</code>, push notification "Reconnect Instagram to keep listings syncing", red dot on Connect card.</li>
+      <li><strong>Rate limit (IG/FB)</strong> → exponential backoff in BullMQ; expose next retry to dealer UI ("Resumes in 4m").</li>
+      <li><strong>Ambiguous post</strong> → REVIEW with a "no car detected" override option; one click marks SKIPPED + trains the per-account ignore filter.</li>
+      <li><strong>Dealer opts out of auto-sold</strong> → media deletion only nudges, doesn't change status.</li>
+      <li><strong>Manual edit after publish</strong> diverges from source — show a "Source updated" badge instead of overwriting.</li>
+    </ul>
+
+    <span id="chat-flows" class="scrollspy-anchor"></span>
+    <h2><span class="eyebrow">16</span>Chat &amp; offers</h2>
+    <div class="screen">
+      <header><span class="route">chat-list</span><h4>Chat list</h4></header>
+      <p>Gold header (brand moment). Sub-tabs: All, Buying, Selling, Unread. Safety reminder banner is permanent + not dismissible. Unread rows: name in gold-dark, body in ink; "X NEW MESSAGES" pill divider above unread group.</p>
+    </div>
+
+    <div class="screen">
+      <header><span class="route">chat-detail</span><h4>Conversation</h4></header>
+      <p>Pinned listing card at top. Date chips between sessions. Message bubbles (me=ink/white, them=white/ink). Inline image bubble. <strong>Offer bubble</strong> with Accept / Counter / Pass; 24h expiry; status badges (OPEN/ACCEPTED/COUNTERED/DECLINED). Composer: + (attach), text input, send. Quick-reply chips: Make an offer, Schedule visit, Send VIN, Verified, Location.</p>
+      <h4>Spam &amp; abuse</h4>
+      <ul>
+        <li>First message between strangers passes through a content classifier. If flagged (off-platform contact request, abuse) → hidden for recipient with a "Suspicious message blocked" notice + Review link.</li>
+        <li>Phone numbers, full URLs and IBANs in messages are masked unless both parties verified.</li>
+        <li>"Report &amp; block" in conversation menu → opens reason picker.</li>
+        <li>Auto-reply for sellers: configurable away-message after X minutes; honour per-locale opening hours.</li>
+      </ul>
+    </div>
+
+    <span id="profile-flows" class="scrollspy-anchor"></span>
+    <h2><span class="eyebrow">17</span>Profile, financing, appointments</h2>
+
+    <div class="screen">
+      <header><span class="route">profile</span><h4>Profile / Menu</h4><span class="meta">tab 5</span></header>
+      <p>Gold header band with user card (avatar, name, verified pill, member-since, city). Quick actions: My ads, My searches. Grouped lists: Account, Marketplace (My appointments, Compare, Recently viewed, Financing), Dealer tools (Switch to dealer mode, Connect Instagram, Listing analytics), Support. City selector at bottom.</p>
+    </div>
+
+    <div class="screen">
+      <header><span class="route">financing</span><h4>Financing calculator</h4></header>
+      <p>Listing context card at top. Big monthly-payment block (gold mono numerals on ink). Sliders: Down payment (% of price), Loan term (12–84 months), Interest rate (3–14% APR; tap to apply for partner pre-approval). Output breakdown (principal / interest / total). CTA → <code>/v1/finance/preapprove</code> hands off to partner web view. Footnote: actual rates from NLB, ProCredit, OTP.</p>
+    </div>
+
+    <div class="screen">
+      <header><span class="route">appointment</span><h4>Book a viewing</h4></header>
+      <p>Listing card. 7-day rolling calendar bar (free slot count per day; greyed when 0). Time grid (8–10 visible slots, struck-through when taken). Type chips: Test drive vs Inspection only. Footer commits booking; seller gets push + chat system message; buyer gets push when seller confirms.</p>
+    </div>
+
+    <span id="background-jobs" class="scrollspy-anchor"></span>
+    <h2><span class="eyebrow">18</span>Background jobs</h2>
+    <table>
+      <thead><tr><th>Job</th><th>Trigger</th><th>What it does</th></tr></thead>
+      <tbody>
+        <tr><td><code>image:variants</code></td><td>on photo upload</td><td>Generate sm/md/lg/avif via imgproxy; persist URLs to <code>Photo.variants</code>; blur main face / plate.</td></tr>
+        <tr><td><code>listing:expire</code></td><td>cron · daily</td><td>Mark listings inactive after 60 days unless renewed; notify seller 5 days before.</td></tr>
+        <tr><td><code>premium:expire</code></td><td>cron · hourly</td><td>Flip <code>premium=false</code> when <code>premiumUntil</code> passes; push notification.</td></tr>
+        <tr><td><code>saved-search:match</code></td><td>cron · 15 min (or instant via Postgres trigger)</td><td>Re-run filters for each saved search; push new-match notifications per <code>frequency</code>.</td></tr>
+        <tr><td><code>import:fetch</code></td><td>cron · 5 min + webhook</td><td>Pull new IG/FB posts per connected account.</td></tr>
+        <tr><td><code>import:extract</code></td><td>queue (BullMQ)</td><td>Run AI pipeline per post → <code>ImportJob</code>.</td></tr>
+        <tr><td><code>price:median</code></td><td>cron · daily</td><td>Compute medians per (make, model, year) cohort for price-suggest + outlier warnings.</td></tr>
+        <tr><td><code>chat:stale</code></td><td>cron · daily</td><td>Auto-archive chats inactive 90+ days.</td></tr>
+        <tr><td><code>notification:digest</code></td><td>cron · 8 AM local</td><td>Roll-up email if push opted out.</td></tr>
+        <tr><td><code>moderation:auto</code></td><td>queue on publish</td><td>NSFW/abuse scan; off-brand stock-photo detection; surface to admin if flagged.</td></tr>
+      </tbody>
+    </table>
+
+    <span id="ai" class="scrollspy-anchor"></span>
+    <h2><span class="eyebrow">19</span>AI &amp; ML</h2>
+    <table>
+      <thead><tr><th>Capability</th><th>Model</th><th>Used in</th></tr></thead>
+      <tbody>
+        <tr><td>Listing extraction from IG/FB post</td><td><code>gpt-4o-mini</code> w/ structured-output JSON schema</td><td>dealer auto-import</td></tr>
+        <tr><td>Mileage/VIN OCR from photo</td><td>Google Cloud Vision OCR + regex post-processing</td><td>dealer auto-import, seller photo upload</td></tr>
+        <tr><td>License-plate detection &amp; mask</td><td>Open-source ALPR (e.g. <code>plate-recognizer</code> self-hosted)</td><td>photo upload pipeline — privacy</td></tr>
+        <tr><td>Duplicate listing detection</td><td>CLIP embeddings · cosine ≥ 0.9</td><td>dealer auto-import, admin moderation</td></tr>
+        <tr><td>Description suggestion</td><td><code>gpt-4o-mini</code></td><td>sell-summary, ai-review</td></tr>
+        <tr><td>Price suggestion / outlier</td><td>median + per-cohort GBR; explainable feature contributions</td><td>sell flow validation, ai-review fallback</td></tr>
+        <tr><td>Compare AI summary</td><td><code>gpt-4o-mini</code></td><td>compare screen</td></tr>
+        <tr><td>Spam / off-platform contact classifier</td><td>fine-tuned distilBERT (sq, mk, sr, en)</td><td>chat moderation</td></tr>
+        <tr><td>Recommendations</td><td>two-tower retrieval; co-views + saved-search overlap</td><td>For-you carousel on home</td></tr>
+      </tbody>
+    </table>
+    <div class="note danger"><strong>Trust:</strong> never auto-publish an AI-extracted listing. Always require a human approval step. Show confidence per field and the source post side-by-side. Mark AI-suggested copy with the sparkle icon.</div>
+
+    <span id="notifications" class="scrollspy-anchor"></span>
+    <h2><span class="eyebrow">20</span>Push notifications</h2>
+    <table>
+      <thead><tr><th>Kind</th><th>Trigger</th><th>Deep link</th></tr></thead>
+      <tbody>
+        <tr><td><code>PRICE_DROP</code></td><td>favourited listing's price &lt; prior</td><td><code>detail/:id</code></td></tr>
+        <tr><td><code>CHAT</code></td><td>new message (recipient offline)</td><td><code>chat-detail/:id</code></td></tr>
+        <tr><td><code>MATCH</code></td><td>SavedSearch new results (per frequency)</td><td><code>listings?savedSearch=:id</code></td></tr>
+        <tr><td><code>OFFER</code></td><td>offer created / countered / accepted</td><td><code>chat-detail/:id</code></td></tr>
+        <tr><td><code>AD_VIEW</code></td><td>daily roll-up of view + chat count on user's ads</td><td><code>dealer-dash</code> or <code>my-ads</code></td></tr>
+        <tr><td><code>APPT</code></td><td>new request, confirmation, cancel, 1h reminder</td><td><code>appointment/:id</code></td></tr>
+        <tr><td><code>SYSTEM</code></td><td>verification result, payment success, policy update</td><td>varies</td></tr>
+      </tbody>
+    </table>
+    <p>Topic subscriptions in <code>User.preferences.pushTopics</code>; manage in Notification settings screen (not in v1 mock — needs adding before launch).</p>
+
+    <span id="integrations" class="scrollspy-anchor"></span>
+    <h2><span class="eyebrow">21</span>Third-party integrations</h2>
+    <ul>
+      <li><strong>Meta Graph API</strong> — Instagram Business + Facebook Page. Scopes: <code>pages_show_list</code>, <code>instagram_basic</code>, <code>pages_read_engagement</code>, <code>business_management</code>. Webhooks: <code>media</code>, <code>media.comments</code>.</li>
+      <li><strong>Twilio Verify</strong> — phone OTP. 6-digit, 5-min TTL, regional sender ID.</li>
+      <li><strong>Stripe</strong> — Top Ad checkout. Connected accounts not needed in v1.</li>
+      <li><strong>Google / Apple Sign In</strong> — server validates ID tokens against Apple's keys / Google's tokeninfo.</li>
+      <li><strong>WhatsApp deeplink</strong> (no API key) — <code>wa.me/&lt;e164&gt;</code> with prefilled text containing listing URL.</li>
+      <li><strong>Google Maps</strong> — city geocode + autocomplete in seller flow location step.</li>
+      <li><strong>imgproxy</strong> behind Cloudflare — signed URLs only.</li>
+      <li><strong>Partner banks (NLB, ProCredit, OTP)</strong> — server-to-server pre-approval API; HMAC-signed payload.</li>
+      <li><strong>Sentry</strong>, <strong>PostHog</strong>, <strong>Grafana Cloud</strong>.</li>
+    </ul>
+
+    <span id="storage" class="scrollspy-anchor"></span>
+    <h2><span class="eyebrow">22</span>Storage &amp; CDN</h2>
+    <ul>
+      <li>Bucket <code>albauto-listings</code> · prefix <code>listings/{listingId}/{photoId}.jpg</code>.</li>
+      <li>Bucket <code>albauto-imports</code> · prefix <code>imports/{socialAccountId}/{postId}/{i}.jpg</code>; auto-purge after 30 d unless promoted to a listing.</li>
+      <li>Bucket <code>albauto-verifications</code> · KMS-encrypted, 90-day TTL, admin-only access.</li>
+      <li>All public reads via Cloudflare with signed URLs that auto-rotate every 7 days.</li>
+      <li>EXIF stripped at upload (privacy); store dimensions, orientation, and detected dominant hue.</li>
+    </ul>
+
+    <span id="admin" class="scrollspy-anchor"></span>
+    <h2><span class="eyebrow">23</span>Admin &amp; moderation</h2>
+    <p>Separate Next.js web console. Single-tenant; admin emails whitelisted in env.</p>
+    <ul>
+      <li>Listing moderation queue (reports + auto-flags), with one-click hide / require-edit / restore.</li>
+      <li>User verification queue: side-by-side ID + selfie, approve / reject / request re-submit.</li>
+      <li>Dealer verification: legal entity check, VAT lookup, social account ownership proof.</li>
+      <li>Premium ad management — refund, extend, regenerate.</li>
+      <li>Fraud dashboard — repeated VIN/phone, abnormal velocity, off-platform contact density per chat.</li>
+      <li>Audit log for every admin action (immutable, daily Parquet export).</li>
+    </ul>
+
+    <span id="analytics" class="scrollspy-anchor"></span>
+    <h2><span class="eyebrow">24</span>Analytics events</h2>
+    <p>PostHog. Naming: <code>{object}_{action}</code> snake_case. Required props on every event: <code>userId</code>, <code>role</code>, <code>locale</code>, <code>app_version</code>, <code>platform</code>.</p>
+    <details><summary>Event list (40+)</summary>
+      <ul>
+        <li><code>app_open</code>, <code>app_background</code></li>
+        <li><code>auth_started</code>, <code>auth_otp_requested</code>, <code>auth_otp_verified</code>, <code>auth_completed{provider}</code>, <code>auth_failed{reason}</code></li>
+        <li><code>home_viewed</code>, <code>home_category_tapped{market}</code>, <code>home_for_you_tapped{position}</code>, <code>home_new_listing_tapped{position}</code></li>
+        <li><code>search_focused</code>, <code>search_typed</code>, <code>search_suggestion_tapped{kind}</code>, <code>search_executed{filters_hash}</code></li>
+        <li><code>listings_viewed</code>, <code>listings_filter_changed{key}</code>, <code>listings_sort_changed{key}</code>, <code>listings_saved_search_created</code></li>
+        <li><code>listing_viewed{id, source}</code>, <code>listing_photo_swiped{index}</code>, <code>listing_favorited</code>, <code>listing_unfavorited</code>, <code>listing_shared{channel}</code>, <code>listing_reported{reason}</code></li>
+        <li><code>chat_opened</code>, <code>chat_message_sent{kind}</code>, <code>chat_phone_revealed</code>, <code>chat_whatsapp_tapped</code></li>
+        <li><code>offer_made</code>, <code>offer_accepted</code>, <code>offer_countered</code>, <code>offer_declined</code>, <code>offer_expired</code></li>
+        <li><code>sell_started</code>, <code>sell_step_completed{n}</code>, <code>sell_published{tier}</code>, <code>sell_payment_started</code>, <code>sell_payment_completed</code></li>
+        <li><code>dealer_social_connect_started{provider}</code>, <code>dealer_social_connect_completed</code>, <code>dealer_social_disconnected</code></li>
+        <li><code>import_review_opened</code>, <code>import_approved</code>, <code>import_skipped</code>, <code>import_published{count}</code></li>
+        <li><code>finance_opened</code>, <code>finance_slider_changed{key}</code>, <code>finance_preapproval_started</code></li>
+        <li><code>appointment_requested</code>, <code>appointment_confirmed</code>, <code>appointment_cancelled</code></li>
+      </ul>
+    </details>
+
+    <span id="i18n" class="scrollspy-anchor"></span>
+    <h2><span class="eyebrow">25</span>Localization</h2>
+    <ul>
+      <li>Locales at launch: <strong>sq</strong> (Albanian), <strong>mk</strong> (Macedonian), <strong>sr</strong> (Serbian – Kosovo), <strong>en</strong>.</li>
+      <li>Number &amp; currency formatting via <code>Intl.NumberFormat</code>; price always EUR but locale-formatted.</li>
+      <li>Use ICU MessageFormat for plurals (especially mk &amp; sr cases).</li>
+      <li>Make/model names stay in Latin; cities translated.</li>
+      <li>Date relative formatting in chat with <code>Intl.RelativeTimeFormat</code>.</li>
+      <li>Translation files in <code>i18n/{locale}.json</code>; CI fails on missing keys.</li>
+    </ul>
+
+    <span id="a11y" class="scrollspy-anchor"></span>
+    <h2><span class="eyebrow">26</span>Accessibility</h2>
+    <ul>
+      <li>Minimum tap target 44 × 44 pt (already designed for this).</li>
+      <li>Body text supports system Dynamic Type / font scaling up to 130% without clipping.</li>
+      <li>VoiceOver / TalkBack labels on every interactive element; status pills announce role + state.</li>
+      <li>Colour contrast: body text ≥ 7:1 on bg; gold is for fills + iconography only — never gold-on-white body text.</li>
+      <li>Reduced motion preference disables hero animations, page transitions and the auto-scrolling carousel.</li>
+      <li>RTL not required at launch; design respects logical inset / margin properties to make it possible.</li>
+    </ul>
+
+    <span id="perf" class="scrollspy-anchor"></span>
+    <h2><span class="eyebrow">27</span>Performance budgets</h2>
+    <ul>
+      <li>Cold start ≤ 1.6s on a 2020 mid-range Android. Hermes + JSC fallback.</li>
+      <li>Home interactive ≤ 800ms after warm start.</li>
+      <li>Listing detail JS bundle ≤ 60KB gzipped above-the-fold.</li>
+      <li>Image first-byte ≤ 200ms (Cloudflare hot cache); largest contentful paint ≤ 1.2s.</li>
+      <li>Realtime: chat message round-trip p95 ≤ 600ms in-region.</li>
+      <li>API p95 ≤ 250ms (excluding image generation).</li>
+    </ul>
+    <h4>Offline behaviour</h4>
+    <ul>
+      <li>Listings cached for 24h in MMKV.</li>
+      <li>Favourites + recently viewed work offline; mutations queued and replayed.</li>
+      <li>Chat shows last-known messages with a "Reconnecting…" pill; outgoing messages enter a "pending" state.</li>
+    </ul>
+
+    <span id="milestones" class="scrollspy-anchor"></span>
+    <h2><span class="eyebrow">28</span>Suggested milestones</h2>
+    <table>
+      <thead><tr><th>Milestone</th><th>Scope</th><th>~Effort</th></tr></thead>
+      <tbody>
+        <tr><td>M0 · Foundations</td><td>monorepo, design tokens in RN, API skeleton, Prisma schema, auth, push, S3 wiring</td><td>2 wks</td></tr>
+        <tr><td>M1 · Buyer browse</td><td>Home, Browse · Balkans, Listing detail, Favourites, Recently viewed</td><td>3 wks</td></tr>
+        <tr><td>M2 · Buyer comms</td><td>Chat, offers, appointments, WhatsApp/Call hand-off</td><td>2 wks</td></tr>
+        <tr><td>M3 · Sell flow</td><td>Sell stack incl. drafts, photo pipeline, Top Ad checkout</td><td>2.5 wks</td></tr>
+        <tr><td>M4 · Import flow</td><td>Continent step + adapters; same UI as Balkan</td><td>0.5 wk</td></tr>
+        <tr><td>M5 · Dealer auto-import</td><td>OAuth, sync, AI extract, review queue, dealer dashboard</td><td>4 wks</td></tr>
+        <tr><td>M6 · Polish + admin</td><td>Notifications hub, financing, compare, saved searches, admin console</td><td>3 wks</td></tr>
+        <tr><td>M7 · Launch</td><td>Penetration test, perf passes, localization audit, beta in MK only</td><td>2 wks</td></tr>
+      </tbody>
+    </table>
+
+    <span id="open-questions" class="scrollspy-anchor"></span>
+    <h2><span class="eyebrow">29</span>Open questions</h2>
+    <ul>
+      <li>Are guest sessions (browse without signup) acceptable? Recommended yes; reduces auth friction.</li>
+      <li>Top Ad pricing — fixed €49 / 7 d, or tiered by market?</li>
+      <li>Do dealers pay for the auto-import system (Pro plan) or is it always free with caps?</li>
+      <li>VIN history / car-history-report partner — Carfax-style. Costs &amp; coverage in Balkans TBD.</li>
+      <li>In-app escrow for high-value sales (post-launch).</li>
+      <li>Verified buyer concept — should an offer require verified buyer status?</li>
+    </ul>
+
+    <hr/>
+    <p style="font-size:11px;color:var(--muted);text-align:center;font-family:'JetBrains Mono',monospace;">
+      AlbAuto Build Spec · v1.0 · Generated for engineering handoff · See companion files: <a href="AlbAuto.html" style="color:var(--gold-dark);">Design canvas</a> · <a href="AlbAuto Prototype.html" style="color:var(--gold-dark);">Interactive prototype</a>
+    </p>
+  </main>
+</div>
+
+<script>
+  // Scrollspy
+  const links = [...document.querySelectorAll('aside a')];
+  const sections = links.map(a => {
+    const id = a.getAttribute('href').slice(1);
+    return { a, target: document.getElementById(id) };
+  }).filter(s => s.target);
+  function onScroll() {
+    const y = window.scrollY + 140;
+    let activeIdx = 0;
+    for (let i = 0; i < sections.length; i++) {
+      if (sections[i].target.offsetTop <= y) activeIdx = i;
+    }
+    links.forEach(l => l.classList.remove('active'));
+    sections[activeIdx]?.a.classList.add('active');
+  }
+  window.addEventListener('scroll', onScroll, { passive: true });
+  onScroll();
+</script>
+</body>
+</html>

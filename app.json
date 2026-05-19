@@ -1,0 +1,29 @@
+{
+  "expo": {
+    "name": "AlbAuto",
+    "slug": "albauto",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "scheme": "albauto",
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#FAFAF7"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.albauto.app"
+    },
+    "android": {
+      "package": "com.albauto.app"
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single"
+    },
+    "experiments": {
+      "tsconfigPaths": true
+    }
+  }
+}
