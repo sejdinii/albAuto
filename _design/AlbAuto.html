@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>AlbAuto · App Prototype</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  html, body { margin: 0; padding: 0; background: #f0eee9; font-family: 'Manrope', system-ui, sans-serif; }
+  *::-webkit-scrollbar { display: none; width: 0; height: 0; }
+  * { scrollbar-width: none; -ms-overflow-style: none; }
+  @keyframes blink { 0%, 50% { opacity: 1 } 51%, 100% { opacity: 0 } }
+</style>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel" src="design-canvas.jsx"></script>
+<script type="text/babel" src="tokens.jsx"></script>
+<script type="text/babel" src="data.jsx"></script>
+<script type="text/babel" src="screens-auth.jsx"></script>
+<script type="text/babel" src="screens-home.jsx"></script>
+<script type="text/babel" src="screens-browse.jsx"></script>
+<script type="text/babel" src="screens-fav.jsx"></script>
+<script type="text/babel" src="screens-seller.jsx"></script>
+<script type="text/babel" src="screens-social.jsx"></script>
+<script type="text/babel" src="screens-chat.jsx"></script>
+<script type="text/babel" src="screens-profile.jsx"></script>
+
+<script type="text/babel" data-presets="env,react">
+  const PHONE_W = 360;
+  const PHONE_H = 740;
+
+    function CoverPanel() {
+    return (
+      <div style={{
+        width: PHONE_W, height: PHONE_H, borderRadius: 22, padding: 32, boxSizing: 'border-box',
+        background: 'linear-gradient(180deg, #0F0F10 0%, #1c1612 100%)',
+        color: '#fff', position: 'relative', overflow: 'hidden',
+      }}>
+        <svg viewBox="0 0 360 200" style={{ position: 'absolute', bottom: 40, left: 0, right: 0, width: '100%', opacity: 0.9 }}>
+          <path d="M30 150 Q34 110 70 100 L140 80 Q200 64 250 70 L320 88 Q345 100 350 130 L350 140 Q345 150 330 150 L320 150 Q318 165 305 165 Q292 165 290 150 L100 150 Q98 165 85 165 Q72 165 70 150 L42 150 Q28 148 30 150 Z" fill="#F5A623"/>
+        </svg>
+        <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', fontFamily: '"JetBrains Mono", monospace', letterSpacing: 1, textTransform: 'uppercase' }}>App specification · v1.0</div>
+        <div style={{ fontSize: 56, fontWeight: 800, color: '#F5A623', letterSpacing: -2, lineHeight: 1, marginTop: 18 }}>AlbAuto</div>
+        <div style={{ fontSize: 18, fontWeight: 700, marginTop: 8, letterSpacing: -0.3 }}>The Balkan car<br/>marketplace.</div>
+        <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', marginTop: 14, lineHeight: 1.5, maxWidth: 240 }}>
+          Buy and sell across Macedonia, Albania and Kosovo. Import from Europe, Asia, Americas. Dealers auto-sync inventory from Instagram and Facebook.
+        </div>
+        <div style={{ position: 'absolute', bottom: 28, left: 32, right: 32, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: 18 }}>
+          <div>
+            <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)', fontFamily: '"JetBrains Mono", monospace', letterSpacing: 1 }}>SECTIONS</div>
+            <div style={{ fontSize: 22, fontWeight: 800, fontFamily: '"JetBrains Mono", monospace' }}>09</div>
+          </div>
+          <div>
+            <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)', fontFamily: '"JetBrains Mono", monospace', letterSpacing: 1 }}>SCREENS</div>
+            <div style={{ fontSize: 22, fontWeight: 800, fontFamily: '"JetBrains Mono", monospace' }}>32</div>
+          </div>
+          <div>
+            <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)', fontFamily: '"JetBrains Mono", monospace', letterSpacing: 1 }}>PLATFORM</div>
+            <div style={{ fontSize: 13, fontWeight: 700 }}>iOS · Android</div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  function App() {
+    return (
+      <DesignCanvas>
+        <DCSection id="cover" title="AlbAuto" subtitle="Original spec · 32 screens · 9 user flows · key differentiator: social auto-import for dealerships">
+          <DCArtboard width={PHONE_W} height={PHONE_H} id="cover" label="Cover">
+            <CoverPanel/>
+          </DCArtboard>
+        </DCSection>
+
+        <DCSection id="onboard" title="01 · Onboarding & Auth" subtitle="First-run experience. Phone-first signup, social login, and a 6-digit OTP. We never publish phone numbers — buyers use in-app chat first.">
+          <DCArtboard width={PHONE_W} height={PHONE_H} id="welcome" label="Welcome"><WelcomeScreen/></DCArtboard>
+          <DCArtboard width={PHONE_W} height={PHONE_H} id="login"   label="Log in"><LoginScreen/></DCArtboard>
+          <DCArtboard width={PHONE_W} height={PHONE_H} id="signup"  label="Sign up · step 1"><SignupScreen/></DCArtboard>
+          <DCArtboard width={PHONE_W} height={PHONE_H} id="otp"     label="OTP verify"><OTPScreen/></DCArtboard>
+        </DCSection>
+
+        <DCSection id="home" title="02 · Home & Discovery" subtitle="Search-led entry with two big category cards (Balkans vs Import), a personalised For-you row, and a 3-col grid of new listings. Notifications cover price drops, offers, saved-search matches and system events.">
+          <DCArtboard width={PHONE_W} height={PHONE_H} id="home"     label="Home"><HomeScreen/></DCArtboard>
+          <DCArtboard width={PHONE_W} height={PHONE_H} id="search"   label="Search · suggestions"><SearchOverlayScreen/></DCArtboard>
+          <DCArtboard width={PHONE_W} height={PHONE_H} id="notifs"   label="Notifications"><NotificationsScreen/></DCArtboard>
+        </DCSection>
+
+        <DCSection id="balkan" title="03 · Browse · Cars within Balkans" subtitle="6-step funnel: Country → City → Make → Model → Listings → Detail. The select-list pattern is the spec's reusable component — same shell every step, parameterised by title + data.">
+          <DCArtboard width={PHONE_W} height={PHONE_H} id="countries" label="1 · Country"><BalkanCountriesScreen/></DCArtboard>
+          <DCArtboard width={PHONE_W} height={PHONE_H} id="cities"    label="2 · City"><BalkanCitiesScreen/></DCArtboard>
+          <DCArtboard width={PHONE_W} height={PHONE_H} id="makes"     label="3 · Make"><MakesScreen/></DCArtboard>
+          <DCArtboard width={PHONE_W} height={PHONE_H} id="models"    label="4 · Model"><ModelsScreen/></DCArtboard>
+          <DCArtboard width={PHONE_W} height={PHONE_H} id="listings"  label="5 · Listings"><ListingsScreen/></DCArtboard>
+          <DCArtboard width={PHONE_W} height={PHONE_H} id="filters"   label="5a · Filters sheet"><FiltersSheet/></DCArtboard>
+          <DCArtboard width={PHONE_W} height={PHONE_H} id="detail"    label="6 · Ad detail"><CarDetailScreen/></DCArtboard>
+        </DCSection>
+
+        <DCSection id="import" title="04 · Browse · Cars for Import" subtitle="Same flow + one extra step at the front: Continent. After Continent → Country → City → Make → Model → Listings → Detail (which reuse the Balkan components).">
+          <DCArtboard width={PHONE_W} height={PHONE_H} id="continents" label="1 · Continent"><ContinentScreen/></DCArtboard>
+          <DCArtboard width={PHONE_W} height={PHONE_H} id="eu-countries" label="2 · Country"><EUCountriesScreen/></DCArtboard>
+        </DCSection>
+
+        <DCSection id="saved" title="05 · Saved, Compare & History" subtitle="Favourites in a 2-col grid. Compare up to 4 cars side-by-side with an AI summary of trade-offs. Saved searches send daily/weekly alerts when new matches arrive.">
+          <DCArtboard width={PHONE_W} height={PHONE_H} id="favs"      label="Favourites"><FavoritesScreen/></DCArtboard>
+          <DCArtboard width={PHONE_W} height={PHONE_H} id="compare"   label="Compare · 2 of 4"><CompareScreen/></DCArtboard>
+          <DCArtboard width={PHONE_W} height={PHONE_H} id="saved-searches" label="Saved searches"><SavedSearchesScreen/></DCArtboard>
+          <DCArtboard width={PHONE_W} height={PHONE_H} id="recent"    label="Recently viewed"><RecentlyViewedScreen/></DCArtboard>
+        </DCSection>
+
+        <DCSection id="sell" title="06 · Sell · Place an Ad" subtitle="Individual seller flow. 5 steps: pick marketplace → fill details → photos & video → review summary → choose Standard (free) or Top Ad (€49/7d). AI helps with description and pricing.">
+          <DCArtboard width={PHONE_W} height={PHONE_H} id="sell-type"   label="1 · Where"><SellTypeScreen/></DCArtboard>
+          <DCArtboard width={PHONE_W} height={PHONE_H} id="sell-form"   label="3 · Details"><CarDetailsFormScreen/></DCArtboard>
+          <DCArtboard width={PHONE_W} height={PHONE_H} id="sell-photos" label="4 · Photos"><PhotosUploadScreen/></DCArtboard>
+          <DCArtboard width={PHONE_W} height={PHONE_H} id="sell-summary" label="5 · Summary"><SummaryScreen/></DCArtboard>
+          <DCArtboard width={PHONE_W} height={PHONE_H} id="sell-options" label="6 · Ad type"><AdOptionsScreen/></DCArtboard>
+          <DCArtboard width={PHONE_W} height={PHONE_H} id="sell-pub"     label="7 · Published"><PublishedAdScreen/></DCArtboard>
+        </DCSection>
+
+        <DCSection id="social" title="07 · Dealer · Social Auto-Import ⚡" subtitle="The competitive moat. Dealers connect Instagram + Facebook once, AI reads photos & captions, and listings appear ready to publish. Auto-marks sold when posts are deleted. Multi-account support.">
+          <DCArtboard width={PHONE_W} height={PHONE_H} id="social-connect" label="Connect socials"><SocialConnectScreen/></DCArtboard>
+          <DCArtboard width={PHONE_W} height={PHONE_H} id="perms"          label="Permissions"><PermissionsScreen/></DCArtboard>
+          <DCArtboard width={PHONE_W} height={PHONE_H} id="importing"      label="Importing · live"><ImportingScreen/></DCArtboard>
+          <DCArtboard width={PHONE_W} height={PHONE_H} id="imported"       label="Imported inventory"><ImportedInventoryScreen/></DCArtboard>
+          <DCArtboard width={PHONE_W} height={PHONE_H} id="ai-review"      label="AI review"><AIReviewScreen/></DCArtboard>
+          <DCArtboard width={PHONE_W} height={PHONE_H} id="dealer-dash"    label="Dealer dashboard"><DealerDashboardScreen/></DCArtboard>
+        </DCSection>
+
+        <DCSection id="chat" title="08 · Chat & Negotiation" subtitle="In-app messaging with online status, verification badges, pinned listing context, structured offer cards (accept / counter / pass), quick-reply chips and safety reminders.">
+          <DCArtboard width={PHONE_W} height={PHONE_H} id="chat-list" label="Chat list"><ChatListScreen/></DCArtboard>
+          <DCArtboard width={PHONE_W} height={PHONE_H} id="chat-detail" label="Conversation · offer"><ChatDetailScreen/></DCArtboard>
+        </DCSection>
+
+        <DCSection id="profile" title="09 · Profile & Buyer Tools" subtitle="Account hub, verification badge, quick-access to My Ads / Searches. Financing calculator with partner-bank rates, and appointment booking integrated with seller availability.">
+          <DCArtboard width={PHONE_W} height={PHONE_H} id="profile-menu" label="Profile · Menu"><ProfileMenuScreen/></DCArtboard>
+          <DCArtboard width={PHONE_W} height={PHONE_H} id="financing"    label="Financing calculator"><FinancingScreen/></DCArtboard>
+          <DCArtboard width={PHONE_W} height={PHONE_H} id="appointment"  label="Book a viewing"><AppointmentScreen/></DCArtboard>
+        </DCSection>
+      </DesignCanvas>
+    );
+  }
+
+  ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>

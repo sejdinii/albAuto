@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>AlbAuto · Interactive Prototype</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  html, body { margin: 0; padding: 0; background: #0F0F10; font-family: 'Manrope', system-ui, sans-serif; height: 100%; overflow: hidden; }
+  #root { height: 100vh; }
+  *::-webkit-scrollbar { display: none; width: 0; height: 0; }
+  * { scrollbar-width: none; -ms-overflow-style: none; }
+  @keyframes blink { 0%, 50% { opacity: 1 } 51%, 100% { opacity: 0 } }
+</style>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel" src="tokens.jsx"></script>
+<script type="text/babel" src="data.jsx"></script>
+<script type="text/babel" src="screens-auth.jsx"></script>
+<script type="text/babel" src="screens-home.jsx"></script>
+<script type="text/babel" src="screens-browse.jsx"></script>
+<script type="text/babel" src="screens-fav.jsx"></script>
+<script type="text/babel" src="screens-seller.jsx"></script>
+<script type="text/babel" src="screens-social.jsx"></script>
+<script type="text/babel" src="screens-chat.jsx"></script>
+<script type="text/babel" src="screens-profile.jsx"></script>
+
+<script type="text/babel" data-presets="env,react">
+  const ROUTES = {
+    'welcome':           WelcomeScreen,
+    'login':             LoginScreen,
+    'signup':            SignupScreen,
+    'otp':               OTPScreen,
+    'home':              HomeScreen,
+    'search':            SearchOverlayScreen,
+    'notifications':     NotificationsScreen,
+    'balkan-countries':  BalkanCountriesScreen,
+    'balkan-cities':     BalkanCitiesScreen,
+    'makes':             MakesScreen,
+    'models':            ModelsScreen,
+    'listings':          ListingsScreen,
+    'filters':           FiltersSheet,
+    'detail':            CarDetailScreen,
+    'continent':         ContinentScreen,
+    'eu-countries':      EUCountriesScreen,
+    'favorites':         FavoritesScreen,
+    'compare':           CompareScreen,
+    'saved-searches':    SavedSearchesScreen,
+    'recent':            RecentlyViewedScreen,
+    'sell-type':         SellTypeScreen,
+    'sell-form':         CarDetailsFormScreen,
+    'sell-photos':       PhotosUploadScreen,
+    'sell-summary':      SummaryScreen,
+    'sell-options':      AdOptionsScreen,
+    'sell-pub':          PublishedAdScreen,
+    'social-connect':    SocialConnectScreen,
+    'perms':             PermissionsScreen,
+    'importing':         ImportingScreen,
+    'imported':          ImportedInventoryScreen,
+    'ai-review':         AIReviewScreen,
+    'dealer-dash':       DealerDashboardScreen,
+    'chat-list':         ChatListScreen,
+    'chat-detail':       ChatDetailScreen,
+    'profile':           ProfileMenuScreen,
+    'financing':         FinancingScreen,
+    'appointment':       AppointmentScreen,
+  };
+
+  function PhoneFrame({ children }) {
+    return (
+      <div style={{
+        width: 376, height: 756, borderRadius: 48, padding: 8,
+        background: '#0a0a0a',
+        boxShadow: '0 30px 80px rgba(0,0,0,0.6), inset 0 0 0 2px rgba(255,255,255,0.06)',
+        position: 'relative',
+        boxSizing: 'border-box',
+      }}>
+        <div style={{ width: 360, height: 740, borderRadius: 40, overflow: 'hidden', background: '#FAFAF7', position: 'relative' }}>
+          {children}
+        </div>
+      </div>
+    );
+  }
+
+  function MapPanel({ stack, onJump, onClose }) {
+    const groups = [
+      { t:'Auth',    keys:['welcome','login','signup','otp'] },
+      { t:'Home',    keys:['home','search','notifications'] },
+      { t:'Balkan',  keys:['balkan-countries','balkan-cities','makes','models','listings','filters','detail'] },
+      { t:'Import',  keys:['continent','eu-countries'] },
+      { t:'Saved',   keys:['favorites','compare','saved-searches','recent'] },
+      { t:'Sell',    keys:['sell-type','sell-form','sell-photos','sell-summary','sell-options','sell-pub'] },
+      { t:'Dealer',  keys:['social-connect','perms','importing','imported','ai-review','dealer-dash'] },
+      { t:'Chat',    keys:['chat-list','chat-detail'] },
+      { t:'Profile', keys:['profile','financing','appointment'] },
+    ];
+    const current = stack[stack.length-1];
+    return (
+      <div style={{ width: 280, height: 800, borderRadius: 24, background: '#1a1a1a', color: '#fff', padding: 18, boxShadow: '0 20px 50px rgba(0,0,0,0.4)', overflow: 'auto', position: 'relative' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+          <div style={{ fontSize: 14, fontWeight: 800, letterSpacing: -0.2 }}>Screens</div>
+          <div onClick={onClose} style={{ width: 24, height: 24, borderRadius: 6, background: 'rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.4" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+          </div>
+        </div>
+        {groups.map(g => (
+          <div key={g.t} style={{ marginBottom: 14 }}>
+            <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)', fontFamily: '"JetBrains Mono", monospace', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 4 }}>{g.t}</div>
+            {g.keys.map(k => {
+              const active = k === current;
+              return (
+                <div key={k} onClick={() => onJump(k)} style={{
+                  padding: '6px 8px', borderRadius: 6, cursor: 'pointer',
+                  background: active ? '#F5A623' : 'transparent',
+                  color: active ? '#0F0F10' : 'rgba(255,255,255,0.75)',
+                  fontSize: 12, fontWeight: active ? 700 : 500,
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                }}>
+                  <span>{k}</span>
+                  {active && <span style={{ fontSize: 9, fontFamily: 'monospace' }}>●</span>}
+                </div>
+              );
+            })}
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  function App() {
+    const [stack, setStack] = React.useState(['welcome']);
+    const [mapOpen, setMapOpen] = React.useState(false);
+    const computeScale = () => {
+      if (typeof window === 'undefined') return 0.8;
+      const vh = window.innerHeight, vw = window.innerWidth;
+      const sy = (vh - 110) / 756;
+      const sx = (vw - 80) / 480;
+      return Math.min(1, sy, sx);
+    };
+    const [scale, setScale] = React.useState(computeScale);
+    const current = stack[stack.length - 1];
+
+    React.useEffect(() => {
+      const fit = () => setScale(computeScale());
+      fit();
+      window.addEventListener('resize', fit);
+      return () => window.removeEventListener('resize', fit);
+    }, [mapOpen]);
+
+    const go   = (r) => { if (!ROUTES[r] || r === current) return; setStack(s => [...s, r]); };
+    const back = ()  => { if (stack.length <= 1) return; setStack(s => s.slice(0, -1)); };
+    const jump = (r) => { if (!ROUTES[r]) return; setStack([r]); setMapOpen(false); };
+
+    // Event delegation
+    const onClick = (e) => {
+      const el = e.target.closest('[data-nav]');
+      if (!el) return;
+      const v = el.getAttribute('data-nav');
+      if (!v) return;
+      if (v === '__back') back();
+      else go(v);
+      e.stopPropagation();
+    };
+
+    const Screen = ROUTES[current] || (() => <div style={{padding:30}}>Not found: {current}</div>);
+
+    return (
+      <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 24, background: 'radial-gradient(ellipse at center, #1a1a1a 0%, #0a0a0a 70%)', position: 'relative' }}>
+        {/* Top bar */}
+        <div style={{ position: 'absolute', top: 16, left: 16, right: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 5 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ width: 28, height: 28, borderRadius: 8, background: '#F5A623', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: 'inset 0 -2px 0 rgba(0,0,0,0.15)' }}>
+              <div style={{ width: 14, height: 5, background: '#0F0F10', borderRadius: 1 }}/>
+            </div>
+            <div>
+              <div style={{ color: '#fff', fontSize: 13, fontWeight: 800, letterSpacing: -0.2 }}>AlbAuto Prototype</div>
+              <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: 10, fontFamily: '"JetBrains Mono", monospace' }}>Tap anywhere highlighted · 36 screens</div>
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <Pill onClick={back} disabled={stack.length <= 1}>← Back</Pill>
+            <Pill onClick={() => setMapOpen(m => !m)} active={mapOpen}>{mapOpen ? '✕ Close' : '☰ All screens'}</Pill>
+            <Pill onClick={() => jump('welcome')}>↺ Restart</Pill>
+            <a href="AlbAuto Build Spec.html" style={{ textDecoration: 'none' }}><Pill>📋 Build spec</Pill></a>
+            <a href="AlbAuto.html" style={{ textDecoration: 'none' }}><Pill>◳ Design canvas</Pill></a>
+          </div>
+        </div>
+
+        {/* Stage (scaled to fit) */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 24, transform: `scale(${scale})`, transformOrigin: 'center center' }}>
+          {/* Map panel */}
+          {mapOpen && <MapPanel stack={stack} onJump={jump} onClose={() => setMapOpen(false)}/>}
+
+          {/* Phone */}
+          <div onClick={onClick} style={{ position: 'relative' }}>
+            <PhoneFrame>
+              <Screen key={stack.length + ':' + current}/>
+            </PhoneFrame>
+          </div>
+        </div>
+
+        {/* Hint */}
+        <div style={{ position: 'absolute', bottom: 18, left: 0, right: 0, textAlign: 'center', color: 'rgba(255,255,255,0.3)', fontSize: 10, fontFamily: '"JetBrains Mono", monospace', letterSpacing: 0.5 }}>
+          <span style={{ color: '#F5A623' }}>{current}</span>{stack.length > 1 ? ` · ${stack.length} deep` : ''}
+        </div>
+      </div>
+    );
+  }
+
+  function Pill({ children, onClick, disabled, active }) {
+    return (
+      <div onClick={disabled ? null : onClick} style={{
+        padding: '7px 12px', borderRadius: 99,
+        background: active ? '#F5A623' : 'rgba(255,255,255,0.08)',
+        color: active ? '#0F0F10' : (disabled ? 'rgba(255,255,255,0.3)' : '#fff'),
+        fontSize: 12, fontWeight: 700,
+        cursor: disabled ? 'not-allowed' : 'pointer',
+        userSelect: 'none',
+        border: '1px solid rgba(255,255,255,0.06)',
+      }}>{children}</div>
+    );
+  }
+
+  ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
