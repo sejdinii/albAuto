@@ -1,51 +1,94 @@
-import React from 'react';
-import { View, Text, ScrollView, StyleSheet } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import React, { useCallback, useState } from 'react';
+import { View, Text, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 
 import { T } from '@/theme/tokens';
 import { TopBar } from '@/components/TopBar';
 import { Icon } from '@/components/Icon';
+import { Button } from '@/components/Button';
 import { CarPhoto } from '@/components/CarPhoto';
-import { CARS } from '@/data/mock';
+import { useAuth } from '@/lib/auth';
+import { fetchFavorites, ListingWithCover } from '@/lib/db';
+import { hasSupabaseConfig } from '@/lib/supabase';
+import { RootStackParamList } from '@/navigation/types';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
-const SPECS: [string, [string, string], number | null][] = [
-  ['Price', ['AED 479,900', 'AED 489,000'], 0],
-  ['Year', ['2024', '2023'], 0],
-  ['Mileage', ['4,200 km', '18,800 km'], 0],
-  ['HP', ['510 HP', '630 HP'], 1],
-  ['0–100 km/h', ['3.5 s', '3.4 s'], 1],
-  ['Body', ['Sedan', 'Wagon'], null],
-  ['Drive', ['M xDrive', 'Quattro'], null],
-  ['Warranty', ['Yes', 'No'], 0],
-];
+type Nav = NativeStackNavigationProp<RootStackParamList>;
 
 export function CompareScreen() {
-  const nav = useNavigation();
-  const cars = [CARS[0], CARS[1]];
+  const nav = useNavigation<Nav>();
+  const { userId } = useAuth();
+  const [cars, setCars] = useState<ListingWithCover[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const load = useCallback(async () => {
+    if (!hasSupabaseConfig || !userId) {
+      setCars([]);
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    try {
+      const rows = await fetchFavorites(userId);
+      setCars(rows.slice(0, 2));
+    } catch {
+      setCars([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [userId]);
+
+  useFocusEffect(useCallback(() => { load(); }, [load]));
+
+  if (loading) {
+    return (
+      <View style={[styles.root, { alignItems: 'center', justifyContent: 'center' }]}>
+        <ActivityIndicator color={T.gold} />
+      </View>
+    );
+  }
+
+  if (cars.length < 2) {
+    return (
+      <View style={styles.root}>
+        <TopBar title="Compare" subtitle={`${cars.length} of 4 selected`} variant="white" onBack={() => nav.goBack()} />
+        <View style={styles.empty}>
+          <Icon name="scale" color={T.muted} size={28} />
+          <Text style={styles.emptyTitle}>Need at least 2 saved cars</Text>
+          <Text style={styles.emptySub}>
+            Tap the heart on listings you want to compare, then come back here.
+          </Text>
+          <View style={{ marginTop: 14, alignSelf: 'stretch' }}>
+            <Button variant="primary" size="md" onPress={() => nav.navigate('Tabs', { screen: 'FavoritesTab' })}>
+              See saved cars
+            </Button>
+          </View>
+        </View>
+      </View>
+    );
+  }
+
+  const [a, b] = cars;
+  const specs = buildSpecs(a, b);
+
   return (
     <View style={styles.root}>
-      <TopBar
-        title="Compare"
-        subtitle="2 of 4 selected"
-        variant="white"
-        onBack={() => nav.goBack()}
-        trailing={<Icon name="plus" color={T.ink} size={20} />}
-      />
+      <TopBar title="Compare" subtitle={`${cars.length} of 4 selected`} variant="white" onBack={() => nav.goBack()} trailing={<Icon name="plus" color={T.ink} size={20} />} />
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 100 }}>
         <View style={styles.headerCards}>
-          {cars.map((c) => (
+          {[a, b].map((c) => (
             <View key={c.id} style={styles.headerCard}>
-              <CarPhoto hue={c.hue} height={90} />
+              <CarPhoto hue={c.hue ?? 30} height={90} />
               <View style={{ padding: 8 }}>
                 <Text style={styles.headerYear}>{c.year}</Text>
                 <Text style={styles.headerTitle}>{c.make} {c.model}</Text>
-                <Text style={styles.headerTrim}>{c.trim}</Text>
+                <Text style={styles.headerTrim}>{c.trim ?? ''}</Text>
               </View>
             </View>
           ))}
         </View>
         <View style={styles.specBox}>
-          {SPECS.map(([label, vals, winner], i) => (
+          {specs.map(({ label, vals, winner }, i) => (
             <View key={label} style={[styles.specRow, { borderTopWidth: i > 0 ? StyleSheet.hairlineWidth : 0 }]}>
               <View style={styles.specLabelCell}>
                 <Text style={styles.specLabel}>{label}</Text>
@@ -71,9 +114,9 @@ export function CompareScreen() {
         <View style={styles.aiBox}>
           <Icon name="sparkles" color={T.goldDark} size={18} />
           <View style={{ flex: 1 }}>
-            <Text style={styles.aiTitle}>AI summary</Text>
+            <Text style={styles.aiTitle}>Heads up</Text>
             <Text style={styles.aiBody}>
-              The M3 is newer with lower mileage and includes warranty. The RS6 has 120 more HP and wagon practicality, but is 8 months older with 4× the mileage.
+              Comparing only your two most recently saved cars. Adjust your favorites to pick different ones.
             </Text>
           </View>
         </View>
@@ -82,8 +125,50 @@ export function CompareScreen() {
   );
 }
 
+function buildSpecs(a: ListingWithCover, b: ListingWithCover) {
+  type Row = { label: string; vals: [string, string]; winner: number | null };
+  const out: Row[] = [
+    {
+      label: 'Price',
+      vals: [fmtPrice(a.price_eur), fmtPrice(b.price_eur)],
+      winner: compareLow(a.price_eur, b.price_eur),
+    },
+    {
+      label: 'Year',
+      vals: [String(a.year), String(b.year)],
+      winner: compareHigh(a.year, b.year),
+    },
+    {
+      label: 'Mileage',
+      vals: [fmtKm(a.km), fmtKm(b.km)],
+      winner: compareLow(a.km, b.km),
+    },
+    { label: 'Body', vals: [a.body ?? '—', b.body ?? '—'], winner: null },
+    { label: 'Fuel', vals: [a.fuel ?? '—', b.fuel ?? '—'], winner: null },
+    { label: 'Location', vals: [a.city ?? '—', b.city ?? '—'], winner: null },
+  ];
+  return out;
+}
+
+function compareLow(av: number | null, bv: number | null): number | null {
+  if (av == null && bv == null) return null;
+  if (av == null) return 1;
+  if (bv == null) return 0;
+  if (av === bv) return null;
+  return av < bv ? 0 : 1;
+}
+function compareHigh(av: number, bv: number): number | null {
+  if (av === bv) return null;
+  return av > bv ? 0 : 1;
+}
+function fmtPrice(n: number | null) { return n ? `€ ${n.toLocaleString()}` : '—'; }
+function fmtKm(n: number | null) { return n ? `${n.toLocaleString()} km` : '—'; }
+
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: T.bg },
+  empty: { padding: 30, alignItems: 'center', gap: 6 },
+  emptyTitle: { fontSize: 14, fontWeight: '700', color: T.ink, fontFamily: T.font, marginTop: 6 },
+  emptySub: { fontSize: 12, color: T.muted, textAlign: 'center', fontFamily: T.font },
   headerCards: { flexDirection: 'row', gap: 10, marginBottom: 16 },
   headerCard: {
     flex: 1,

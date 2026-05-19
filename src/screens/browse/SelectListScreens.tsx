@@ -1,29 +1,35 @@
-import React from 'react';
-import { View, Text, ScrollView, StyleSheet, Pressable } from 'react-native';
+import React, { useCallback, useEffect, useState } from 'react';
+import { View, Text, ScrollView, StyleSheet, Pressable, ActivityIndicator } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { T } from '@/theme/tokens';
 import { TopBar } from '@/components/TopBar';
 import { Icon } from '@/components/Icon';
-import { BALKAN_COUNTRIES, MK_CITIES, CONTINENTS, EU_COUNTRIES } from '@/data/mock';
+import { useBrowseFilters } from '@/lib/browse';
+import { fetchCountryCounts, fetchCityCounts } from '@/lib/db';
+import {
+  BALKAN_COUNTRIES, CONTINENTS, EU_COUNTRIES,
+  CITIES_BY_COUNTRY, COUNTRY_CODE_BY_NAME,
+} from '@/data/mock';
+import { hasSupabaseConfig } from '@/lib/supabase';
 import { RootStackParamList } from '@/navigation/types';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
-type Item = { name: string; count?: number; flag?: string };
+type ListItem = { id: string; name: string; count?: number; flag?: string };
 
 type Props = {
   title: string;
   subtitle?: string;
   allLabel?: string;
-  items: (Item | string)[];
-  selectedIdx?: number;
+  items: ListItem[];
+  selectedId?: string;
   showSearch?: boolean;
-  nextRoute: keyof RootStackParamList;
+  onPick: (id: string | null) => void;
 };
 
-function SelectList({ title, subtitle, allLabel, items, selectedIdx = 0, showSearch = true, nextRoute }: Props) {
+function SelectList({ title, subtitle, allLabel, items, selectedId, showSearch = true, onPick }: Props) {
   const nav = useNavigation<Nav>();
   return (
     <View style={styles.root}>
@@ -43,30 +49,26 @@ function SelectList({ title, subtitle, allLabel, items, selectedIdx = 0, showSea
       <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
         {allLabel && (
           <Pressable
-            onPress={() => nav.navigate(nextRoute as never)}
-            style={[
-              styles.row,
-              { backgroundColor: selectedIdx === -1 ? T.goldTint : 'transparent' },
-            ]}
+            onPress={() => onPick(null)}
+            style={[styles.row, { backgroundColor: selectedId == null ? T.goldTint : 'transparent' }]}
           >
             <Text style={[styles.name, { fontWeight: '700' }]}>{allLabel}</Text>
-            {selectedIdx === -1 && <Check />}
+            {selectedId == null && <Check />}
           </Pressable>
         )}
-        {items.map((raw, i) => {
-          const it = typeof raw === 'string' ? { name: raw } : raw;
-          const sel = i === selectedIdx;
+        {items.map((it) => {
+          const sel = it.id === selectedId;
           return (
             <Pressable
-              key={i}
-              onPress={() => nav.navigate(nextRoute as never)}
+              key={it.id}
+              onPress={() => onPick(it.id)}
               style={[styles.row, { backgroundColor: sel ? T.goldTint : 'transparent' }]}
             >
               {it.flag && <Text style={styles.flag}>{it.flag}</Text>}
               <View style={{ flex: 1 }}>
                 <Text style={[styles.name, { fontWeight: sel ? '700' : '500' }]}>{it.name}</Text>
                 {it.count != null && (
-                  <Text style={styles.count}>{it.count.toLocaleString()} listings</Text>
+                  <Text style={styles.count}>{it.count.toLocaleString()} listing{it.count === 1 ? '' : 's'}</Text>
                 )}
               </View>
               {sel && <Check />}
@@ -86,55 +88,141 @@ function Check() {
   );
 }
 
+// ============================================================
+// BALKAN COUNTRIES
+// ============================================================
+
 export function BalkanCountriesScreen() {
+  const nav = useNavigation<Nav>();
+  const { filters, patch } = useBrowseFilters();
+  const [counts, setCounts] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    if (hasSupabaseConfig) fetchCountryCounts().then(setCounts);
+  }, []);
+
+  const items: ListItem[] = BALKAN_COUNTRIES.map((c) => {
+    const code = COUNTRY_CODE_BY_NAME[c.name] ?? c.name;
+    return { id: code, name: c.name, count: counts[code] ?? c.count, flag: c.flag };
+  });
+
   return (
     <SelectList
       title="Cars within Balkans"
-      subtitle="Step 1 of 5 · Pick a country"
+      subtitle="Step 1 of 4 · Pick a country"
       allLabel="All in Balkan Countries"
-      items={BALKAN_COUNTRIES}
-      selectedIdx={-1}
-      nextRoute="BalkanCities"
+      items={items}
+      selectedId={filters.country}
+      onPick={(id) => {
+        patch({ marketplace: 'balkans', country: id ?? undefined, city: undefined });
+        if (id) nav.navigate('BalkanCities');
+        else nav.navigate('Makes');
+      }}
     />
   );
 }
+
+// ============================================================
+// CITIES (in Balkans / EU / etc.)
+// ============================================================
 
 export function BalkanCitiesScreen() {
+  const nav = useNavigation<Nav>();
+  const { filters, patch } = useBrowseFilters();
+  const [counts, setCounts] = useState<Record<string, number>>({});
+  const [loading, setLoading] = useState(false);
+
+  const country = filters.country ?? 'MK';
+  const cities = CITIES_BY_COUNTRY[country] ?? [];
+  const countryLabel =
+    Object.entries(COUNTRY_CODE_BY_NAME).find(([, code]) => code === country)?.[0] ?? country;
+
+  useEffect(() => {
+    if (!hasSupabaseConfig) return;
+    setLoading(true);
+    fetchCityCounts(country).then((c) => {
+      setCounts(c);
+      setLoading(false);
+    });
+  }, [country]);
+
+  if (loading) {
+    return (
+      <View style={[styles.root, { alignItems: 'center', justifyContent: 'center' }]}>
+        <ActivityIndicator color={T.gold} />
+      </View>
+    );
+  }
+
+  const items: ListItem[] = cities.map((c) => ({ id: c, name: c, count: counts[c] ?? 0 }));
+
   return (
     <SelectList
-      title="Cities in North Macedonia"
-      subtitle="Step 2 of 5 · Pick a city"
+      title={`Cities in ${countryLabel}`}
+      subtitle="Step 2 of 4 · Pick a city"
       allLabel="All cities"
-      items={MK_CITIES.map((c, i) => ({ name: c, count: 100 + i * 37 }))}
-      selectedIdx={0}
-      nextRoute="Makes"
+      items={items}
+      selectedId={filters.city}
+      onPick={(id) => {
+        patch({ city: id ?? undefined });
+        nav.navigate('Makes');
+      }}
     />
   );
 }
 
+// ============================================================
+// CONTINENT (Import flow)
+// ============================================================
+
 export function ContinentScreen() {
+  const nav = useNavigation<Nav>();
+  const { patch } = useBrowseFilters();
+  const items: ListItem[] = CONTINENTS.map((c) => ({ id: c.name, name: c.name, count: c.count }));
   return (
     <SelectList
       title="Cars for Import"
-      subtitle="Step 1 of 6 · Pick a continent"
+      subtitle="Step 1 of 5 · Pick a continent"
       allLabel="All continents"
-      items={CONTINENTS}
-      selectedIdx={-1}
+      items={items}
       showSearch={false}
-      nextRoute="EuCountries"
+      onPick={(id) => {
+        patch({ marketplace: 'import', continent: id ?? undefined, country: undefined, city: undefined });
+        nav.navigate('EuCountries');
+      }}
     />
   );
 }
 
+// ============================================================
+// EU COUNTRIES (Import flow)
+// ============================================================
+
 export function EuCountriesScreen() {
+  const nav = useNavigation<Nav>();
+  const { filters, patch } = useBrowseFilters();
+  const [counts, setCounts] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    if (hasSupabaseConfig) fetchCountryCounts().then(setCounts);
+  }, []);
+
+  const items: ListItem[] = EU_COUNTRIES.map((name) => {
+    const code = COUNTRY_CODE_BY_NAME[name] ?? name;
+    return { id: code, name, count: counts[code] };
+  });
+
   return (
     <SelectList
       title="Cars within Europe"
-      subtitle="Step 2 of 6 · Pick a country"
+      subtitle="Step 2 of 5 · Pick a country"
       allLabel="All in Europe"
-      items={EU_COUNTRIES.slice(0, 9).map((n, i) => ({ name: n, count: 200 + i * 91 }))}
-      selectedIdx={5}
-      nextRoute="Makes"
+      items={items}
+      selectedId={filters.country}
+      onPick={(id) => {
+        patch({ country: id ?? undefined, city: undefined });
+        nav.navigate('Makes');
+      }}
     />
   );
 }

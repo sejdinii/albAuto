@@ -1,148 +1,245 @@
-import React from 'react';
-import { View, Text, ScrollView, StyleSheet, Pressable } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  View, Text, ScrollView, StyleSheet, Pressable, TextInput, ActivityIndicator, KeyboardAvoidingView, Platform,
+} from 'react-native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { T, hueGradient } from '@/theme/tokens';
 import { Icon } from '@/components/Icon';
-import { CarPhoto } from '@/components/CarPhoto';
+import { useAuth } from '@/lib/auth';
+import { fetchMessages, getOrCreateChat, Message, sendMessage, subscribeToMessages } from '@/lib/db';
+import { supabase } from '@/lib/supabase';
+import { RootStackParamList } from '@/navigation/types';
 
-const QUICK = ['Make an offer', 'Schedule visit', 'Send VIN', 'Verified', 'Location'];
+type Rt = RouteProp<RootStackParamList, 'ChatDetail'>;
+
+type ChatMeta = {
+  id: string;
+  otherName: string;
+  otherInit: string;
+  listingLabel: string | null;
+  listingHue: number;
+  listingPrice: number | null;
+  listingCity: string | null;
+};
 
 export function ChatDetailScreen() {
   const nav = useNavigation();
+  const route = useRoute<Rt>();
   const insets = useSafeAreaInsets();
-  const [from] = hueGradient(30);
+  const { session, userId } = useAuth();
+  const [meta, setMeta] = useState<ChatMeta | null>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [draft, setDraft] = useState('');
+  const [sending, setSending] = useState(false);
+  const scrollRef = useRef<ScrollView | null>(null);
+
+  const chatId = (route.params as any)?.chatId as string | undefined;
+  const sellerId = (route.params as any)?.sellerId as string | undefined;
+  const listingId = (route.params as any)?.listingId as string | undefined;
+
+  const init = useCallback(async () => {
+    if (!session) {
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    try {
+      let resolvedId = chatId;
+      if (!resolvedId && sellerId) {
+        const chat = await getOrCreateChat(userId!, sellerId, listingId ?? null);
+        resolvedId = chat.id;
+      }
+      if (!resolvedId) {
+        setLoading(false);
+        return;
+      }
+      // Load chat metadata
+      const { data: chatRow } = await supabase
+        .from('chats')
+        .select(`
+          id, buyer_id, seller_id, listing_id,
+          listings(make, model, year, hue, price_eur, city),
+          buyer:profiles!buyer_id(name),
+          seller:profiles!seller_id(name)
+        `)
+        .eq('id', resolvedId)
+        .single();
+      if (chatRow) {
+        const c = chatRow as any;
+        const isBuyer = c.buyer_id === userId;
+        const otherName = (isBuyer ? c.seller?.name : c.buyer?.name) ?? 'User';
+        const label = c.listings ? `${c.listings.year} ${c.listings.make} ${c.listings.model}` : null;
+        setMeta({
+          id: c.id,
+          otherName,
+          otherInit: (otherName[0] ?? 'U').toUpperCase(),
+          listingLabel: label,
+          listingHue: c.listings?.hue ?? 30,
+          listingPrice: c.listings?.price_eur ?? null,
+          listingCity: c.listings?.city ?? null,
+        });
+      }
+      const msgs = await fetchMessages(resolvedId);
+      setMessages(msgs);
+    } finally {
+      setLoading(false);
+    }
+  }, [session, userId, chatId, sellerId, listingId]);
+
+  useEffect(() => { init(); }, [init]);
+
+  // Subscribe to new messages in realtime
+  useEffect(() => {
+    if (!meta?.id) return;
+    const unsub = subscribeToMessages(meta.id, (m) => {
+      setMessages((cur) => (cur.find((c) => c.id === m.id) ? cur : [...cur, m]));
+    });
+    return unsub;
+  }, [meta?.id]);
+
+  useEffect(() => {
+    // Scroll to bottom when messages change
+    setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 50);
+  }, [messages.length]);
+
+  const onSend = async () => {
+    const body = draft.trim();
+    if (!body || !meta || !userId) return;
+    setSending(true);
+    setDraft('');
+    try {
+      const m = await sendMessage(meta.id, userId, body);
+      setMessages((cur) => (cur.find((c) => c.id === m.id) ? cur : [...cur, m]));
+    } finally {
+      setSending(false);
+    }
+  };
+
+  if (!session) {
+    return (
+      <View style={[styles.root, { alignItems: 'center', justifyContent: 'center', padding: 20 }]}>
+        <Icon name="chat" color={T.muted} size={28} />
+        <Text style={styles.emptyTitle}>Sign in to chat</Text>
+      </View>
+    );
+  }
+
+  if (loading) {
+    return (
+      <View style={[styles.root, { alignItems: 'center', justifyContent: 'center' }]}>
+        <ActivityIndicator color={T.gold} />
+      </View>
+    );
+  }
+
+  if (!meta) {
+    return (
+      <View style={[styles.root, { alignItems: 'center', justifyContent: 'center', padding: 20 }]}>
+        <Icon name="chat" color={T.muted} size={28} />
+        <Text style={styles.emptyTitle}>Chat not found</Text>
+        <Text style={styles.emptySub}>Open a listing and tap "Chat" to start a conversation.</Text>
+      </View>
+    );
+  }
+
+  const [from] = hueGradient(meta.listingHue);
+
   return (
-    <View style={styles.root}>
+    <KeyboardAvoidingView
+      style={styles.root}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+    >
       <View style={[styles.header, { paddingTop: Math.max(insets.top, 12) }]}>
         <View style={styles.headerRow}>
           <Pressable onPress={() => nav.goBack()} hitSlop={10}>
             <Icon name="back" color={T.ink} size={22} />
           </Pressable>
           <View style={[styles.avatar, { backgroundColor: from }]}>
-            <Text style={styles.avatarText}>AM</Text>
-            <View style={styles.verified}>
-              <Icon name="verified" color={T.gold} size={14} />
-            </View>
+            <Text style={styles.avatarText}>{meta.otherInit}</Text>
           </View>
           <View style={{ flex: 1 }}>
-            <View style={styles.nameRow}>
-              <Text style={styles.name}>Andrej M.</Text>
-              <Icon name="verified" color={T.gold} size={13} />
-            </View>
+            <Text style={styles.name}>{meta.otherName}</Text>
             <Text style={styles.status}>● Online · usually replies in 10m</Text>
           </View>
           <Icon name="phone" color={T.ink} size={20} />
           <View style={{ width: 8 }} />
           <Icon name="dots" color={T.ink} size={20} />
         </View>
-        <View style={styles.pinned}>
-          <View style={styles.pinnedPhoto}>
-            <CarPhoto hue={30} height={44} />
+        {meta.listingLabel && (
+          <View style={styles.pinned}>
+            <View style={[styles.pinnedPhoto, { backgroundColor: from }]} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.pinnedTitle}>{meta.listingLabel}</Text>
+              <Text style={styles.pinnedPrice}>
+                {meta.listingPrice ? `€ ${meta.listingPrice.toLocaleString()}` : 'No price'}
+                {meta.listingCity ? ` · ${meta.listingCity}` : ''}
+              </Text>
+            </View>
+            <Icon name="chevR" color={T.muted} size={14} />
           </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.pinnedTitle}>2024 BMW M3 Competition</Text>
-            <Text style={styles.pinnedPrice}>€ 121,300 · Skopje</Text>
-          </View>
-          <Icon name="chevR" color={T.muted} size={14} />
-        </View>
+        )}
       </View>
-      <ScrollView contentContainerStyle={styles.messages}>
-        <DateChip text="Today" />
-        <Bubble side="them">Hey, is the M3 still available?</Bubble>
-        <Bubble side="them">Saw it on your Instagram too.</Bubble>
-        <Bubble side="me">Yes! Still here. When would you like to see it?</Bubble>
-        <ImageBubble hue={30} />
-        <Bubble side="them">Looks great. Would you take 115k?</Bubble>
-        <View style={styles.offerCard}>
-          <Text style={styles.offerLabel}>● Offer · valid 24h</Text>
-          <Text style={styles.offerAmount}>€ 115,000</Text>
-          <Text style={styles.offerSub}>5% below your asking price</Text>
-          <View style={styles.offerActions}>
-            <Pressable style={styles.offerAccept}>
-              <Text style={styles.offerAcceptText}>Accept</Text>
-            </Pressable>
-            <Pressable style={styles.offerCounter}>
-              <Text style={styles.offerCounterText}>Counter</Text>
-            </Pressable>
-            <Pressable style={styles.offerPass}>
-              <Text style={styles.offerPassText}>Pass</Text>
-            </Pressable>
+
+      <ScrollView ref={scrollRef} contentContainerStyle={styles.messages}>
+        {messages.length === 0 ? (
+          <View style={styles.empty}>
+            <Text style={styles.emptyTitle}>Say hi</Text>
+            <Text style={styles.emptySub}>Be polite and avoid sharing bank details here.</Text>
           </View>
-        </View>
-        <Bubble side="me">I can do 118k. Test drive tomorrow at 11?</Bubble>
-        <TypingBubble />
+        ) : (
+          messages.map((m) => <Bubble key={m.id} message={m} me={m.sender_id === userId} />)
+        )}
       </ScrollView>
+
       <View style={[styles.composerWrap, { paddingBottom: 8 + insets.bottom }]}>
         <View style={styles.composerRow}>
           <Icon name="plus" color={T.ink} size={20} strokeWidth={2.2} />
           <View style={styles.input}>
-            <Text style={styles.inputPlaceholder}>Message…</Text>
+            <TextInput
+              value={draft}
+              onChangeText={setDraft}
+              placeholder="Message…"
+              placeholderTextColor={T.muted}
+              style={styles.inputText}
+              multiline
+            />
             <Icon name="attach" color={T.muted} size={16} />
           </View>
-          <View style={styles.sendBtn}>
-            <Icon name="send" color={T.ink} size={16} strokeWidth={2.4} />
-          </View>
+          <Pressable onPress={onSend} disabled={sending || !draft.trim()} style={styles.sendBtn}>
+            {sending ? (
+              <ActivityIndicator color={T.ink} size="small" />
+            ) : (
+              <Icon name="send" color={T.ink} size={16} strokeWidth={2.4} />
+            )}
+          </Pressable>
         </View>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, paddingHorizontal: 12 }}>
-          {QUICK.map((q) => (
-            <View key={q} style={styles.quickPill}>
-              <Text style={styles.quickText}>{q}</Text>
-            </View>
-          ))}
-        </ScrollView>
       </View>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
-function DateChip({ text }: { text: string }) {
+function Bubble({ message, me }: { message: Message; me: boolean }) {
   return (
-    <View style={styles.dateChip}>
-      <Text style={styles.dateChipText}>{text}</Text>
-    </View>
-  );
-}
-
-function Bubble({ side, children }: { side: 'me' | 'them'; children: React.ReactNode }) {
-  const me = side === 'me';
-  return (
-    <View
-      style={[
-        styles.bubble,
-        me ? styles.bubbleMe : styles.bubbleThem,
-      ]}
-    >
-      <Text style={[styles.bubbleText, { color: me ? '#fff' : T.ink }]}>{children}</Text>
-      <Text style={[styles.bubbleMeta, { color: me ? 'rgba(255,255,255,0.4)' : T.muted, textAlign: me ? 'right' : 'left' }]}>
-        {me ? '14:28 · ✓✓' : '14:26'}
+    <View style={[styles.bubble, me ? styles.bubbleMe : styles.bubbleThem]}>
+      <Text style={[styles.bubbleText, { color: me ? '#fff' : T.ink }]}>{message.body}</Text>
+      <Text
+        style={[
+          styles.bubbleMeta,
+          { color: me ? 'rgba(255,255,255,0.4)' : T.muted, textAlign: me ? 'right' : 'left' },
+        ]}
+      >
+        {formatTime(message.created_at)} {me ? '✓✓' : ''}
       </Text>
     </View>
   );
 }
 
-function ImageBubble({ hue }: { hue: number }) {
-  return (
-    <View style={[styles.bubble, styles.bubbleMe, { padding: 4, borderRadius: 14, width: 200 }]}>
-      <View style={{ borderRadius: 10, overflow: 'hidden' }}>
-        <CarPhoto hue={hue} height={130} radius={10} />
-      </View>
-      <Text style={styles.imgMeta}>14:28 · ✓✓ read</Text>
-    </View>
-  );
-}
-
-function TypingBubble() {
-  return (
-    <View style={[styles.bubble, styles.bubbleThem, { paddingHorizontal: 14, paddingVertical: 12 }]}>
-      <View style={{ flexDirection: 'row', gap: 4 }}>
-        {[0, 1, 2].map((i) => (
-          <View key={i} style={styles.typingDot} />
-        ))}
-      </View>
-    </View>
-  );
+function formatTime(iso: string): string {
+  return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
 const styles = StyleSheet.create({
@@ -159,17 +256,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
-  avatar: {
-    width: 38,
-    height: 38,
-    borderRadius: 99,
-    alignItems: 'center',
-    justifyContent: 'center',
-    position: 'relative',
-  },
+  avatar: { width: 38, height: 38, borderRadius: 99, alignItems: 'center', justifyContent: 'center' },
   avatarText: { color: '#fff', fontSize: 13, fontWeight: '800', fontFamily: T.font },
-  verified: { position: 'absolute', bottom: -1, right: -1 },
-  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   name: { fontSize: 14, fontWeight: '800', color: T.ink, fontFamily: T.font },
   status: { fontSize: 11, color: T.green, fontWeight: '600', fontFamily: T.font },
   pinned: {
@@ -183,23 +271,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
   },
-  pinnedPhoto: { width: 44, height: 44, borderRadius: 8, overflow: 'hidden' },
+  pinnedPhoto: { width: 44, height: 44, borderRadius: 8 },
   pinnedTitle: { fontSize: 12, fontWeight: '700', color: T.ink, fontFamily: T.font },
   pinnedPrice: { fontSize: 11, color: T.muted, fontFamily: T.mono },
-  messages: { padding: 14, gap: 8 },
-  dateChip: {
-    alignSelf: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-    borderRadius: 99,
-    backgroundColor: T.surfaceAlt,
-  },
-  dateChipText: { fontSize: 10, color: T.muted, fontFamily: T.mono, fontWeight: '700', letterSpacing: 0.5 },
-  bubble: {
-    maxWidth: '78%',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
+  messages: { padding: 14, gap: 8, flexGrow: 1 },
+  empty: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 6, paddingTop: 60 },
+  emptyTitle: { fontSize: 14, fontWeight: '700', color: T.ink, fontFamily: T.font },
+  emptySub: { fontSize: 12, color: T.muted, textAlign: 'center', paddingHorizontal: 30, fontFamily: T.font },
+  bubble: { maxWidth: '78%', paddingHorizontal: 12, paddingVertical: 8 },
   bubbleMe: {
     alignSelf: 'flex-end',
     backgroundColor: T.ink,
@@ -220,93 +299,29 @@ const styles = StyleSheet.create({
   },
   bubbleText: { fontSize: 13, lineHeight: 18, fontFamily: T.font },
   bubbleMeta: { fontSize: 10, fontFamily: T.mono, marginTop: 4 },
-  imgMeta: { fontSize: 10, color: 'rgba(255,255,255,0.5)', fontFamily: T.mono, paddingHorizontal: 4, paddingTop: 4 },
-  typingDot: { width: 6, height: 6, borderRadius: 99, backgroundColor: T.muted, opacity: 0.6 },
-  offerCard: {
-    alignSelf: 'flex-start',
-    maxWidth: '88%',
-    padding: 12,
-    backgroundColor: '#fff',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: T.hairline,
-    borderTopLeftRadius: 4,
-    borderTopRightRadius: 18,
-    borderBottomLeftRadius: 18,
-    borderBottomRightRadius: 18,
-  },
-  offerLabel: {
-    fontSize: 10,
-    color: T.muted,
-    fontWeight: '700',
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
-    fontFamily: T.font,
-  },
-  offerAmount: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: T.ink,
-    fontFamily: T.mono,
-    marginTop: 4,
-  },
-  offerSub: { fontSize: 11, color: T.muted, marginTop: 2, fontFamily: T.font },
-  offerActions: { flexDirection: 'row', gap: 8, marginTop: 10 },
-  offerAccept: {
-    flex: 1,
-    paddingVertical: 7,
-    backgroundColor: T.gold,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  offerAcceptText: { fontSize: 12, fontWeight: '700', color: T.ink, fontFamily: T.font },
-  offerCounter: {
-    flex: 1,
-    paddingVertical: 7,
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    borderWidth: 1.5,
-    borderColor: T.ink,
-    alignItems: 'center',
-  },
-  offerCounterText: { fontSize: 12, fontWeight: '700', color: T.ink, fontFamily: T.font },
-  offerPass: { flex: 0.5, paddingVertical: 7, alignItems: 'center' },
-  offerPassText: { fontSize: 12, fontWeight: '700', color: T.body, fontFamily: T.font },
   composerWrap: {
     backgroundColor: '#fff',
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: T.hairline,
     paddingTop: 8,
   },
-  composerRow: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
+  composerRow: { paddingHorizontal: 12, paddingVertical: 8, flexDirection: 'row', alignItems: 'center', gap: 8 },
   input: {
     flex: 1,
-    height: 38,
-    borderRadius: 99,
+    minHeight: 38,
+    borderRadius: 19,
     backgroundColor: T.surfaceAlt,
     paddingHorizontal: 12,
     flexDirection: 'row',
     alignItems: 'center',
   },
-  inputPlaceholder: { flex: 1, fontSize: 13, color: T.muted, fontFamily: T.font },
-  sendBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 99,
-    backgroundColor: T.gold,
-    alignItems: 'center',
-    justifyContent: 'center',
+  inputText: {
+    flex: 1,
+    fontSize: 13,
+    color: T.ink,
+    fontFamily: T.font,
+    paddingVertical: 8,
+    maxHeight: 100,
   },
-  quickPill: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 99,
-    backgroundColor: T.surfaceAlt,
-  },
-  quickText: { fontSize: 11, color: T.body, fontWeight: '600', fontFamily: T.font },
+  sendBtn: { width: 38, height: 38, borderRadius: 99, backgroundColor: T.gold, alignItems: 'center', justifyContent: 'center' },
 });

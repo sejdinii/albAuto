@@ -7,6 +7,8 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { AuthProvider } from '@/lib/auth';
+import { SellFlowProvider } from '@/lib/sellFlow';
+import { BrowseProvider } from '@/lib/browse';
 import { RootStackParamList } from '@/navigation/types';
 import { TabsNavigator } from '@/navigation/TabsNavigator';
 
@@ -59,6 +61,8 @@ export default function App() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <AuthProvider>
+          <SellFlowProvider>
+          <BrowseProvider>
           <NavigationContainer>
           <Stack.Navigator
             initialRouteName="Welcome"
@@ -107,6 +111,8 @@ export default function App() {
           </Stack.Navigator>
             <StatusBar style="dark" />
           </NavigationContainer>
+          </BrowseProvider>
+          </SellFlowProvider>
         </AuthProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>

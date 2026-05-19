@@ -1,14 +1,42 @@
-import React from 'react';
-import { View, Text, ScrollView, StyleSheet } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import { View, Text, ScrollView, StyleSheet, Pressable } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 
-import { T, shadow } from '@/theme/tokens';
+import { T } from '@/theme/tokens';
 import { TopBar } from '@/components/TopBar';
 import { Button } from '@/components/Button';
+import { Icon } from '@/components/Icon';
 import { CarPhoto } from '@/components/CarPhoto';
+
+const DOWN_PAYMENTS = [10, 20, 30, 40];
+const TERMS = [36, 48, 60, 72];
+const RATES = [4.9, 5.9, 6.4, 7.5, 9.0];
 
 export function FinancingScreen() {
   const nav = useNavigation();
+  const carPrice = 121_300;
+  const [downPct, setDownPct] = useState(20);
+  const [termMonths, setTermMonths] = useState(60);
+  const [rate, setRate] = useState(6.4);
+
+  const calc = useMemo(() => {
+    const down = (carPrice * downPct) / 100;
+    const principal = carPrice - down;
+    const r = rate / 100 / 12;
+    const monthly = r === 0
+      ? principal / termMonths
+      : (principal * r) / (1 - Math.pow(1 + r, -termMonths));
+    const totalPaid = monthly * termMonths;
+    const interest = totalPaid - principal;
+    return {
+      down: Math.round(down),
+      principal: Math.round(principal),
+      monthly: Math.round(monthly),
+      interest: Math.round(interest),
+      total: Math.round(totalPaid + down),
+    };
+  }, [downPct, termMonths, rate, carPrice]);
+
   return (
     <View style={styles.root}>
       <TopBar
@@ -25,16 +53,22 @@ export function FinancingScreen() {
           <View style={{ flex: 1 }}>
             <Text style={styles.summaryTitle}>BMW M3 Competition</Text>
             <Text style={styles.summarySub}>2024 · 4,200 km</Text>
-            <Text style={styles.summaryPrice}>€ 121,300</Text>
+            <Text style={styles.summaryPrice}>€ {carPrice.toLocaleString()}</Text>
           </View>
         </View>
 
         <View style={styles.bigBox}>
           <Text style={styles.bigLabel}>Estimated monthly</Text>
-          <Text style={styles.bigNumber}>€ 1,847</Text>
-          <Text style={styles.bigSub}>60 months · 6.4% APR · €24,260 down</Text>
+          <Text style={styles.bigNumber}>€ {calc.monthly.toLocaleString()}</Text>
+          <Text style={styles.bigSub}>
+            {termMonths} months · {rate}% APR · €{calc.down.toLocaleString()} down
+          </Text>
           <View style={styles.bigGrid}>
-            {[['Principal', '€97,040'], ['Interest', '€13,580'], ['Total', '€110,620']].map(([k, v]) => (
+            {[
+              ['Principal', `€${calc.principal.toLocaleString()}`],
+              ['Interest', `€${calc.interest.toLocaleString()}`],
+              ['Total', `€${calc.total.toLocaleString()}`],
+            ].map(([k, v]) => (
               <View key={k}>
                 <Text style={styles.bigKey}>{k.toUpperCase()}</Text>
                 <Text style={styles.bigVal}>{v}</Text>
@@ -44,10 +78,25 @@ export function FinancingScreen() {
         </View>
 
         <View style={{ marginTop: 18, gap: 18 }}>
-          <Slider label="Down payment" value="€ 24,260" caption="20% of car price" pct={20} />
-          <Slider label="Loan term" value="60 months" caption="5 years" pct={60} />
-          <Slider label="Interest rate" value="6.4% APR" caption="Tap to apply for pre-approval" pct={32} />
+          <Section label="Down payment" value={`${downPct}% · €${calc.down.toLocaleString()}`}>
+            <Chips options={DOWN_PAYMENTS.map((p) => ({ id: p, label: `${p}%` }))} value={downPct} onPick={setDownPct} />
+          </Section>
+          <Section label="Loan term" value={`${termMonths} months`}>
+            <Chips
+              options={TERMS.map((t) => ({ id: t, label: `${t}mo` }))}
+              value={termMonths}
+              onPick={setTermMonths}
+            />
+          </Section>
+          <Section label="Interest rate" value={`${rate}% APR`}>
+            <Chips
+              options={RATES.map((r) => ({ id: r, label: `${r}%` }))}
+              value={rate}
+              onPick={setRate}
+            />
+          </Section>
         </View>
+
         <View style={{ marginTop: 18 }}>
           <Button variant="primary" size="md" iconRight="chevR">Get pre-approved · 60s</Button>
         </View>
@@ -59,18 +108,35 @@ export function FinancingScreen() {
   );
 }
 
-function Slider({ label, value, caption, pct }: { label: string; value: string; caption: string; pct: number }) {
+function Section({ label, value, children }: { label: string; value: string; children: React.ReactNode }) {
   return (
     <View>
-      <View style={styles.sliderHead}>
-        <Text style={styles.sliderLabel}>{label}</Text>
-        <Text style={styles.sliderValue}>{value}</Text>
+      <View style={styles.head}>
+        <Text style={styles.headLabel}>{label}</Text>
+        <Text style={styles.headValue}>{value}</Text>
       </View>
-      <View style={styles.track}>
-        <View style={[styles.fill, { width: `${pct}%` }]} />
-        <View style={[styles.knob, { left: `${pct}%`, marginLeft: -10 }, shadow.elev]} />
-      </View>
-      {caption && <Text style={styles.caption}>{caption}</Text>}
+      <View style={{ marginTop: 8 }}>{children}</View>
+    </View>
+  );
+}
+
+function Chips<T extends number>({
+  options, value, onPick,
+}: { options: { id: T; label: string }[]; value: T; onPick: (v: T) => void }) {
+  return (
+    <View style={styles.chipRow}>
+      {options.map((o) => {
+        const sel = o.id === value;
+        return (
+          <Pressable
+            key={o.id}
+            onPress={() => onPick(o.id)}
+            style={[styles.chip, { backgroundColor: sel ? T.gold : T.surfaceAlt }]}
+          >
+            <Text style={[styles.chipText, { fontWeight: sel ? '700' : '600' }]}>{o.label}</Text>
+          </Pressable>
+        );
+      })}
     </View>
   );
 }
@@ -91,39 +157,18 @@ const styles = StyleSheet.create({
   summaryTitle: { fontSize: 13, fontWeight: '800', color: T.ink, fontFamily: T.font },
   summarySub: { fontSize: 11, color: T.muted, fontFamily: T.font },
   summaryPrice: { fontSize: 13, fontWeight: '800', color: T.ink, fontFamily: T.mono, marginTop: 4 },
-  bigBox: {
-    marginTop: 16,
-    padding: 18,
-    backgroundColor: T.ink,
-    borderRadius: 18,
-  },
+  bigBox: { marginTop: 16, padding: 18, backgroundColor: T.ink, borderRadius: 18 },
   bigLabel: { fontSize: 10, color: 'rgba(255,255,255,0.5)', fontFamily: T.mono, letterSpacing: 1, textTransform: 'uppercase' },
   bigNumber: { fontSize: 40, fontWeight: '800', color: T.gold, fontFamily: T.mono, letterSpacing: -1.5, marginTop: 4 },
   bigSub: { fontSize: 11, color: 'rgba(255,255,255,0.6)', marginTop: 6, fontFamily: T.font },
   bigGrid: { marginTop: 14, flexDirection: 'row', justifyContent: 'space-between' },
   bigKey: { fontSize: 9, color: 'rgba(255,255,255,0.5)', fontFamily: T.mono, letterSpacing: 0.5 },
   bigVal: { fontSize: 13, fontWeight: '700', color: '#fff', fontFamily: T.mono, marginTop: 2 },
-  sliderHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 },
-  sliderLabel: { fontSize: 12, fontWeight: '700', color: T.ink, fontFamily: T.font },
-  sliderValue: { fontSize: 14, fontWeight: '800', color: T.ink, fontFamily: T.mono },
-  track: {
-    height: 8,
-    marginTop: 8,
-    backgroundColor: T.hairline,
-    borderRadius: 99,
-    position: 'relative',
-  },
-  fill: { position: 'absolute', left: 0, top: 0, bottom: 0, backgroundColor: T.gold, borderRadius: 99 },
-  knob: {
-    position: 'absolute',
-    top: -6,
-    width: 20,
-    height: 20,
-    borderRadius: 99,
-    backgroundColor: '#fff',
-    borderWidth: 2,
-    borderColor: T.gold,
-  },
-  caption: { fontSize: 11, color: T.muted, marginTop: 8, fontFamily: T.font },
+  head: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' },
+  headLabel: { fontSize: 12, fontWeight: '700', color: T.ink, fontFamily: T.font },
+  headValue: { fontSize: 14, fontWeight: '800', color: T.ink, fontFamily: T.mono },
+  chipRow: { flexDirection: 'row', gap: 6, flexWrap: 'wrap' },
+  chip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 99 },
+  chipText: { fontSize: 12, color: T.ink, fontFamily: T.font },
   fine: { fontSize: 10, color: T.muted, marginTop: 10, textAlign: 'center', lineHeight: 14, fontFamily: T.font },
 });

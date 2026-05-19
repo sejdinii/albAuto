@@ -51,6 +51,24 @@ export const MK_CITIES = [
   'Skopje', 'Bitola', 'Kumanovo', 'Prilep', 'Tetovo', 'Ohrid', 'Veles', 'Štip', 'Gostivar', 'Strumica', 'Kavadarci',
 ];
 
+export const CITIES_BY_COUNTRY: Record<string, string[]> = {
+  'MK': MK_CITIES,
+  'AL': ['Tirana', 'Durrës', 'Vlorë', 'Shkodër', 'Elbasan', 'Fier', 'Korçë', 'Berat'],
+  'XK': ['Pristina', 'Prizren', 'Mitrovica', 'Peja', 'Gjakova', 'Gjilan', 'Ferizaj'],
+  'DE': ['Berlin', 'Munich', 'Hamburg', 'Frankfurt', 'Stuttgart', 'Düsseldorf', 'Cologne'],
+  'IT': ['Milan', 'Rome', 'Turin', 'Naples', 'Florence', 'Bologna'],
+  'FR': ['Paris', 'Lyon', 'Marseille', 'Toulouse', 'Nice'],
+};
+
+export const COUNTRY_CODE_BY_NAME: Record<string, string> = {
+  'North Macedonia': 'MK',
+  'Albania': 'AL',
+  'Kosovo': 'XK',
+  'Germany': 'DE',
+  'Italy': 'IT',
+  'France': 'FR',
+};
+
 export const MAKES = [
   'Abarth', 'Acura', 'AITO', 'Al Damani', 'Alfa Romeo', 'Ariel', 'Ashok Leyland', 'Aston Martin', 'Audi', 'Aurus',
   'BMW', 'BYD', 'Cadillac', 'Chevrolet', 'Citroën', 'Cupra', 'Dacia', 'Dodge',
