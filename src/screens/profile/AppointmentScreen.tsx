@@ -1,157 +1,246 @@
-import React from 'react';
-import { View, Text, ScrollView, StyleSheet, Pressable } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import React, { useCallback, useEffect, useState } from 'react';
+import { View, Text, ScrollView, StyleSheet, Pressable, Alert, ActivityIndicator } from 'react-native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { T, shadow } from '@/theme/tokens';
 import { TopBar } from '@/components/TopBar';
 import { Button } from '@/components/Button';
 import { Icon } from '@/components/Icon';
 import { CarPhoto } from '@/components/CarPhoto';
+import { useAuth } from '@/lib/auth';
+import { createAppointment, fetchAppointmentsForBuyer, fetchListingDetail } from '@/lib/db';
+import { hasSupabaseConfig } from '@/lib/supabase';
+import { RootStackParamList } from '@/navigation/types';
 
-const DAYS = [
-  { d: 'Mon', n: 12, slots: 0 },
-  { d: 'Tue', n: 13, slots: 3 },
-  { d: 'Wed', n: 14, slots: 5, sel: true },
-  { d: 'Thu', n: 15, slots: 2 },
-  { d: 'Fri', n: 16, slots: 4 },
-  { d: 'Sat', n: 17, slots: 6 },
-  { d: 'Sun', n: 18, slots: 1 },
-];
+type Nav = NativeStackNavigationProp<RootStackParamList>;
+type Rt = RouteProp<RootStackParamList, 'Appointment'>;
 
-const TIMES = [
-  { t: '09:30', avail: true },
-  { t: '10:00', avail: false },
-  { t: '10:30', avail: true },
-  { t: '11:00', avail: true, sel: true },
-  { t: '11:30', avail: false },
-  { t: '14:00', avail: true },
-  { t: '14:30', avail: true },
-  { t: '15:00', avail: false },
-];
+const TIMES = ['09:30', '10:00', '10:30', '11:00', '11:30', '14:00', '14:30', '15:00', '15:30', '16:00'];
 
 export function AppointmentScreen() {
-  const nav = useNavigation();
+  const nav = useNavigation<Nav>();
+  const route = useRoute<Rt>();
   const insets = useSafeAreaInsets();
+  const { session, userId } = useAuth();
+  const [listing, setListing] = useState<{ id: string; make: string; model: string; year: number; city: string | null; hue: number } | null>(null);
+  const [days, setDays] = useState(() => buildDays(new Date()));
+  const [dayIdx, setDayIdx] = useState(2);
+  const [time, setTime] = useState('11:00');
+  const [kind, setKind] = useState<'test_drive' | 'inspection'>('test_drive');
+  const [busy, setBusy] = useState(false);
+  const [mine, setMine] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const listingId = route.params?.listingId;
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      if (listingId && hasSupabaseConfig) {
+        const row = await fetchListingDetail(listingId);
+        setListing({
+          id: row.id,
+          make: row.make,
+          model: row.model,
+          year: row.year,
+          city: row.city,
+          hue: row.hue ?? 30,
+        });
+      } else {
+        setListing(null);
+      }
+      if (userId && hasSupabaseConfig) {
+        const rows = await fetchAppointmentsForBuyer(userId);
+        setMine(rows);
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [listingId, userId]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const onConfirm = async () => {
+    if (!session) {
+      Alert.alert('Sign in', 'Sign in to book a viewing.');
+      return;
+    }
+    if (!listing) {
+      Alert.alert('Pick a car first', 'Open a listing detail and tap "Book viewing" to schedule.');
+      return;
+    }
+    setBusy(true);
+    try {
+      const day = days[dayIdx];
+      const [h, m] = time.split(':').map(Number);
+      const start = new Date(day.date);
+      start.setHours(h, m, 0, 0);
+      await createAppointment(session.user.id, listing.id, start, kind);
+      Alert.alert('Booked', `Your ${kind === 'test_drive' ? 'test drive' : 'inspection'} is requested for ${formatStart(start)}.`);
+      nav.goBack();
+    } catch (err: any) {
+      Alert.alert('Could not book', err?.message ?? String(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <View style={[styles.root, { alignItems: 'center', justifyContent: 'center' }]}>
+        <ActivityIndicator color={T.gold} />
+      </View>
+    );
+  }
+
   return (
     <View style={styles.root}>
       <TopBar
         title="Book a viewing"
-        subtitle="BMW M3 Competition"
+        subtitle={listing ? `${listing.year} ${listing.make} ${listing.model}` : 'No listing selected'}
         variant="white"
         onBack={() => nav.goBack()}
       />
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 140 }}>
-        <View style={styles.listingCard}>
-          <View style={styles.listingPhoto}>
-            <CarPhoto hue={30} height={50} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.listingTitle}>BMW M3 Competition</Text>
-            <View style={styles.listingMeta}>
-              <Icon name="pin" size={11} color={T.muted} />
-              <Text style={styles.listingMetaText}>AutoBalkan Skopje</Text>
+        {listing ? (
+          <View style={styles.listingCard}>
+            <View style={styles.listingPhoto}>
+              <CarPhoto hue={listing.hue} height={50} />
             </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.listingTitle}>{listing.year} {listing.make} {listing.model}</Text>
+              <View style={styles.listingMeta}>
+                <Icon name="pin" size={11} color={T.muted} />
+                <Text style={styles.listingMetaText}>{listing.city ?? 'Location'}</Text>
+              </View>
+            </View>
+            <Icon name="verified" color={T.gold} size={18} />
           </View>
-          <Icon name="verified" color={T.gold} size={18} />
-        </View>
+        ) : (
+          <View style={styles.noListing}>
+            <Icon name="cal" color={T.muted} size={20} />
+            <Text style={styles.noListingTitle}>No listing selected</Text>
+            <Text style={styles.noListingSub}>
+              Open a car detail screen and tap "Book viewing" to schedule against a real listing.
+            </Text>
+          </View>
+        )}
 
         <View style={{ marginTop: 18 }}>
-          <View style={styles.monthRow}>
-            <Text style={styles.month}>May 2026</Text>
-            <View style={{ flexDirection: 'row', gap: 8 }}>
-              <View style={styles.monthNav}>
-                <Icon name="back" color={T.ink} size={14} />
-              </View>
-              <View style={styles.monthNav}>
-                <Icon name="chevR" color={T.ink} size={14} />
-              </View>
-            </View>
-          </View>
+          <Text style={styles.section}>Pick a day</Text>
           <View style={styles.daysGrid}>
-            {DAYS.map((d, i) => (
-              <View
-                key={i}
-                style={[
-                  styles.dayCell,
-                  {
-                    backgroundColor: d.sel ? T.ink : '#fff',
-                    borderWidth: d.sel ? 0 : StyleSheet.hairlineWidth,
-                    opacity: d.slots === 0 ? 0.4 : 1,
-                  },
-                ]}
-              >
-                <Text style={[styles.dayLabel, { color: d.sel ? 'rgba(255,255,255,0.6)' : T.muted }]}>
-                  {d.d.toUpperCase()}
-                </Text>
-                <Text style={[styles.dayNum, { color: d.sel ? T.gold : T.ink }]}>{d.n}</Text>
-                <Text style={[styles.daySlots, { color: d.sel ? 'rgba(255,255,255,0.5)' : T.muted }]}>
-                  {d.slots > 0 ? `${d.slots} free` : '—'}
-                </Text>
-              </View>
-            ))}
-          </View>
-        </View>
-
-        <View style={{ marginTop: 18 }}>
-          <Text style={styles.section}>Wed, May 14</Text>
-          <View style={styles.timesGrid}>
-            {TIMES.map((t, i) => (
-              <View
-                key={i}
-                style={[
-                  styles.timeCell,
-                  {
-                    backgroundColor: t.sel ? T.gold : '#fff',
-                    borderWidth: t.sel ? 0 : StyleSheet.hairlineWidth,
-                    opacity: t.avail ? 1 : 0.5,
-                  },
-                ]}
-              >
-                <Text
+            {days.map((d, i) => {
+              const sel = i === dayIdx;
+              return (
+                <Pressable
+                  key={i}
+                  onPress={() => setDayIdx(i)}
                   style={[
-                    styles.timeText,
+                    styles.dayCell,
                     {
-                      fontWeight: t.sel ? '800' : '600',
-                      textDecorationLine: t.avail ? 'none' : 'line-through',
-                      color: t.avail ? T.ink : T.muted,
+                      backgroundColor: sel ? T.ink : '#fff',
+                      borderWidth: sel ? 0 : StyleSheet.hairlineWidth,
                     },
                   ]}
                 >
-                  {t.t}
-                </Text>
-              </View>
-            ))}
+                  <Text style={[styles.dayLabel, { color: sel ? 'rgba(255,255,255,0.6)' : T.muted }]}>{d.label}</Text>
+                  <Text style={[styles.dayNum, { color: sel ? T.gold : T.ink }]}>{d.num}</Text>
+                </Pressable>
+              );
+            })}
           </View>
         </View>
 
         <View style={{ marginTop: 18 }}>
-          <Text style={styles.section}>Type of viewing</Text>
-          <View style={styles.typesGrid}>
-            <View style={[styles.typeCell, { backgroundColor: T.ink }]}>
-              <Icon name="car" color={T.gold} size={20} />
-              <Text style={[styles.typeTitle, { color: '#fff' }]}>Test drive</Text>
-              <Text style={[styles.typeSub, { color: 'rgba(255,255,255,0.6)' }]}>30–45 min</Text>
-            </View>
-            <View style={[styles.typeCell, { backgroundColor: '#fff', borderWidth: StyleSheet.hairlineWidth }]}>
-              <Icon name="eye" color={T.body} size={20} />
-              <Text style={[styles.typeTitle, { color: T.ink }]}>Inspection only</Text>
-              <Text style={[styles.typeSub, { color: T.muted }]}>15–20 min</Text>
-            </View>
+          <Text style={styles.section}>Pick a time</Text>
+          <View style={styles.timesGrid}>
+            {TIMES.map((t) => {
+              const sel = time === t;
+              return (
+                <Pressable
+                  key={t}
+                  onPress={() => setTime(t)}
+                  style={[
+                    styles.timeCell,
+                    { backgroundColor: sel ? T.gold : '#fff', borderWidth: sel ? 0 : StyleSheet.hairlineWidth },
+                  ]}
+                >
+                  <Text style={[styles.timeText, { fontWeight: sel ? '800' : '600' }]}>{t}</Text>
+                </Pressable>
+              );
+            })}
           </View>
         </View>
+
+        <View style={{ marginTop: 18 }}>
+          <Text style={styles.section}>Type</Text>
+          <View style={styles.typesGrid}>
+            <Pressable onPress={() => setKind('test_drive')} style={[styles.typeCell, kind === 'test_drive' ? styles.typeCellSel : styles.typeCellOff]}>
+              <Icon name="car" color={kind === 'test_drive' ? T.gold : T.body} size={20} />
+              <Text style={[styles.typeTitle, { color: kind === 'test_drive' ? '#fff' : T.ink }]}>Test drive</Text>
+              <Text style={[styles.typeSub, { color: kind === 'test_drive' ? 'rgba(255,255,255,0.6)' : T.muted }]}>30–45 min</Text>
+            </Pressable>
+            <Pressable onPress={() => setKind('inspection')} style={[styles.typeCell, kind === 'inspection' ? styles.typeCellSel : styles.typeCellOff]}>
+              <Icon name="eye" color={kind === 'inspection' ? T.gold : T.body} size={20} />
+              <Text style={[styles.typeTitle, { color: kind === 'inspection' ? '#fff' : T.ink }]}>Inspection only</Text>
+              <Text style={[styles.typeSub, { color: kind === 'inspection' ? 'rgba(255,255,255,0.6)' : T.muted }]}>15–20 min</Text>
+            </Pressable>
+          </View>
+        </View>
+
+        {mine.length > 0 && (
+          <View style={{ marginTop: 22 }}>
+            <Text style={styles.section}>Your upcoming appointments</Text>
+            {mine.map((a: any) => (
+              <View key={a.id} style={styles.apptRow}>
+                <View style={styles.apptIcon}>
+                  <Icon name="cal" color={T.goldDark} size={16} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.apptTitle}>{a.listings?.make} {a.listings?.model}</Text>
+                  <Text style={styles.apptSub}>{formatStart(new Date(a.start_at))} · {a.kind === 'test_drive' ? 'Test drive' : 'Inspection'}</Text>
+                </View>
+                <Text style={styles.apptStatus}>{a.status}</Text>
+              </View>
+            ))}
+          </View>
+        )}
       </ScrollView>
+
       <View style={[styles.bottom, { paddingBottom: 12 + insets.bottom }, shadow.sticky]}>
         <View>
-          <Text style={styles.bottomLabel}>WED · 11:00</Text>
-          <Text style={styles.bottomTitle}>Test drive · 30 min</Text>
+          <Text style={styles.bottomLabel}>{days[dayIdx].full.toUpperCase()} · {time}</Text>
+          <Text style={styles.bottomTitle}>{kind === 'test_drive' ? 'Test drive · 30 min' : 'Inspection · 20 min'}</Text>
         </View>
         <View style={{ flex: 1 }}>
-          <Button variant="primary" size="md">Confirm</Button>
+          <Button variant="primary" size="md" onPress={onConfirm} disabled={busy || !listing}>
+            {busy ? <ActivityIndicator color={T.ink} /> : 'Confirm'}
+          </Button>
         </View>
       </View>
     </View>
   );
+}
+
+function buildDays(start: Date) {
+  const out: { date: Date; label: string; num: number; full: string }[] = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(start);
+    d.setDate(start.getDate() + i);
+    out.push({
+      date: d,
+      label: d.toLocaleDateString([], { weekday: 'short' }).toUpperCase(),
+      num: d.getDate(),
+      full: d.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' }),
+    });
+  }
+  return out;
+}
+
+function formatStart(d: Date) {
+  return d.toLocaleString([], { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
 const styles = StyleSheet.create({
@@ -170,18 +259,16 @@ const styles = StyleSheet.create({
   listingTitle: { fontSize: 13, fontWeight: '800', color: T.ink, fontFamily: T.font },
   listingMeta: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   listingMetaText: { fontSize: 11, color: T.muted, fontFamily: T.font },
-  monthRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-  month: { fontSize: 14, fontWeight: '800', color: T.ink, fontFamily: T.font },
-  monthNav: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
-    backgroundColor: '#fff',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: T.hairline,
+  noListing: {
+    padding: 16,
+    backgroundColor: T.surfaceAlt,
+    borderRadius: 12,
     alignItems: 'center',
-    justifyContent: 'center',
+    gap: 6,
   },
+  noListingTitle: { fontSize: 13, fontWeight: '700', color: T.ink, fontFamily: T.font },
+  noListingSub: { fontSize: 11, color: T.muted, textAlign: 'center', fontFamily: T.font },
+  section: { fontSize: 14, fontWeight: '800', color: T.ink, marginBottom: 10, fontFamily: T.font },
   daysGrid: { flexDirection: 'row', gap: 6 },
   dayCell: {
     flex: 1,
@@ -192,17 +279,15 @@ const styles = StyleSheet.create({
   },
   dayLabel: { fontSize: 9, fontFamily: T.mono, fontWeight: '700', letterSpacing: 0.5 },
   dayNum: { fontSize: 14, fontWeight: '800', fontFamily: T.mono, marginTop: 2 },
-  daySlots: { fontSize: 8, fontFamily: T.mono, marginTop: 1 },
-  section: { fontSize: 14, fontWeight: '800', color: T.ink, marginBottom: 10, fontFamily: T.font },
   timesGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   timeCell: {
-    width: '23.5%',
+    width: '18%',
     paddingVertical: 10,
     borderRadius: 8,
     alignItems: 'center',
     borderColor: T.hairline,
   },
-  timeText: { fontSize: 12, fontFamily: T.mono },
+  timeText: { fontSize: 12, fontFamily: T.mono, color: T.ink },
   typesGrid: { flexDirection: 'row', gap: 8 },
   typeCell: {
     flex: 1,
@@ -210,8 +295,32 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderColor: T.hairline,
   },
+  typeCellSel: { backgroundColor: T.ink },
+  typeCellOff: { backgroundColor: '#fff', borderWidth: StyleSheet.hairlineWidth },
   typeTitle: { fontSize: 13, fontWeight: '800', marginTop: 6, fontFamily: T.font },
   typeSub: { fontSize: 10, marginTop: 2, fontFamily: T.font },
+  apptRow: {
+    padding: 12,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: T.hairline,
+    marginBottom: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  apptIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: T.goldTint,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  apptTitle: { fontSize: 13, fontWeight: '700', color: T.ink, fontFamily: T.font },
+  apptSub: { fontSize: 11, color: T.muted, fontFamily: T.font, marginTop: 2 },
+  apptStatus: { fontSize: 10, color: T.muted, fontFamily: T.mono, textTransform: 'uppercase', letterSpacing: 0.5 },
   bottom: {
     backgroundColor: '#fff',
     borderTopWidth: StyleSheet.hairlineWidth,

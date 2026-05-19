@@ -11,7 +11,7 @@ import { Icon } from '@/components/Icon';
 import { CarPhoto } from '@/components/CarPhoto';
 import { Badge } from '@/components/Badge';
 import { useAuth } from '@/lib/auth';
-import { fetchListingDetail, toggleFavorite } from '@/lib/db';
+import { fetchListingDetail, recordView, toggleFavorite } from '@/lib/db';
 import { CARS, Car } from '@/data/mock';
 import { hasSupabaseConfig, supabase } from '@/lib/supabase';
 import { RootStackParamList } from '@/navigation/types';
@@ -21,6 +21,7 @@ type Rt = RouteProp<RootStackParamList, 'CarDetail'>;
 
 type Detail = {
   id: string;
+  seller_id: string | null;
   make: string;
   model: string;
   trim: string | null;
@@ -62,6 +63,7 @@ export function CarDetailScreen() {
         const row = await fetchListingDetail(id);
         setDetail({
           id: row.id,
+          seller_id: row.seller_id,
           make: row.make,
           model: row.model,
           trim: row.trim,
@@ -92,6 +94,8 @@ export function CarDetailScreen() {
     if (userId && isUuid) {
       const { data } = await supabase.from('favorites').select('listing_id').eq('user_id', userId).eq('listing_id', id).maybeSingle();
       setFav(!!data);
+      // Track view (fire and forget)
+      recordView(userId, id).catch(() => undefined);
     }
     setLoading(false);
   }, [id, userId]);
@@ -218,7 +222,19 @@ export function CarDetailScreen() {
           <Icon name="whatsapp" color="#fff" size={16} />
           <Text style={styles.waBtnText}>WhatsApp</Text>
         </Pressable>
-        <Pressable onPress={() => nav.navigate('ChatDetail')} style={styles.chatBtn}>
+        <Pressable
+          onPress={() => {
+            if (detail.isMock || !detail.seller_id) {
+              nav.navigate('ChatDetail');
+              return;
+            }
+            if (detail.seller_id === userId) {
+              return;
+            }
+            nav.navigate('ChatDetail', { sellerId: detail.seller_id, listingId: detail.id });
+          }}
+          style={styles.chatBtn}
+        >
           <Icon name="chat" color={T.gold} size={20} strokeWidth={2.2} />
         </Pressable>
       </View>
@@ -234,6 +250,7 @@ function detailFromMock(id: string): Detail {
 function mockToDetail(c: Car): Detail {
   return {
     id: c.id,
+    seller_id: null,
     make: c.make,
     model: c.model,
     trim: c.trim,

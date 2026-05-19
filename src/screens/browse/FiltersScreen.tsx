@@ -1,17 +1,87 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, ScrollView, StyleSheet, Pressable } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Svg, { Rect } from 'react-native-svg';
 
-import { T, shadow } from '@/theme/tokens';
+import { T } from '@/theme/tokens';
 import { Button } from '@/components/Button';
+import { useBrowseFilters, BrowseFilters } from '@/lib/browse';
+import { countListings } from '@/lib/db';
 
-const BARS = [4, 8, 10, 18, 22, 28, 34, 30, 28, 22, 18, 12, 10, 8, 7, 8, 10, 12, 14, 10, 8, 6, 5, 4, 3, 3, 2, 2];
+const YEAR_OPTIONS = [2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025, 2026];
+const BODY_OPTIONS: { id: string; label: string }[] = [
+  { id: 'sedan', label: 'Sedan' },
+  { id: 'suv', label: 'SUV' },
+  { id: 'wagon', label: 'Wagon' },
+  { id: 'coupe', label: 'Coupé' },
+  { id: 'pickup', label: 'Pickup' },
+  { id: 'hatch', label: 'Hatch' },
+];
+const FUEL_OPTIONS: { id: string; label: string }[] = [
+  { id: 'petrol', label: 'Petrol' },
+  { id: 'diesel', label: 'Diesel' },
+  { id: 'hybrid', label: 'Hybrid' },
+  { id: 'electric', label: 'Electric' },
+  { id: 'lpg', label: 'LPG' },
+];
+const PRICE_RANGES: { id: string; label: string; min?: number; max?: number }[] = [
+  { id: 'lt20', label: 'Under €20k', max: 20000 },
+  { id: '20-50', label: '€20k–50k', min: 20000, max: 50000 },
+  { id: '50-100', label: '€50k–100k', min: 50000, max: 100000 },
+  { id: '100-200', label: '€100k–200k', min: 100000, max: 200000 },
+  { id: 'gt200', label: 'Over €200k', min: 200000 },
+];
 
 export function FiltersScreen() {
   const nav = useNavigation();
   const insets = useSafeAreaInsets();
+  const { filters, patch, reset, resetTo } = useBrowseFilters();
+
+  // Local draft so user can hit "Reset" without nuking until apply
+  const [draft, setDraft] = useState<BrowseFilters>(filters);
+  const [count, setCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    countListings({
+      country: draft.country,
+      city: draft.city,
+      make: draft.make,
+      model: draft.model,
+      yearMin: draft.yearMin,
+      yearMax: draft.yearMax,
+      priceMin: draft.priceMin,
+      priceMax: draft.priceMax,
+      body: draft.body,
+      fuel: draft.fuel,
+      query: draft.query,
+    }).then((n) => alive && setCount(n)).catch(() => alive && setCount(null));
+    return () => { alive = false; };
+  }, [draft]);
+
+  const toggle = (key: 'body' | 'fuel', value: string) => {
+    setDraft((d) => {
+      const cur = (d[key] ?? []) as string[];
+      const next = cur.includes(value) ? cur.filter((v) => v !== value) : [...cur, value];
+      return { ...d, [key]: next.length ? next : undefined };
+    });
+  };
+
+  const apply = () => {
+    resetTo(draft);
+    nav.goBack();
+  };
+
+  const wipe = () => {
+    setDraft({
+      marketplace: filters.marketplace,
+      country: filters.country,
+      city: filters.city,
+      make: filters.make,
+      model: filters.model,
+    });
+  };
+
   return (
     <View style={styles.root}>
       <Pressable style={styles.scrim} onPress={() => nav.goBack()} />
@@ -19,55 +89,57 @@ export function FiltersScreen() {
         <View style={styles.grabber} />
         <View style={styles.header}>
           <Text style={styles.title}>Filters</Text>
-          <Text style={styles.reset}>Reset</Text>
+          <Pressable onPress={wipe}><Text style={styles.reset}>Reset</Text></Pressable>
         </View>
         <ScrollView showsVerticalScrollIndicator={false}>
-          <FilterRow label="Price range" value="€20k – €130k">
-            <View style={styles.priceWrap}>
-              <Svg viewBox="0 0 280 40" width="100%" height={50}>
-                {BARS.map((h, i) => {
-                  const sel = i > 4 && i < 22;
-                  return (
-                    <Rect
-                      key={i}
-                      x={i * 10 + 2}
-                      y={40 - h}
-                      width={6}
-                      height={h}
-                      rx={1}
-                      fill={sel ? T.gold : T.hairline}
-                    />
-                  );
-                })}
-              </Svg>
-              <View style={styles.priceTrack} />
-              <View style={styles.priceFill} />
-              <View style={[styles.knob, { left: '18%' }]} />
-              <View style={[styles.knob, { right: '20%' }]} />
-            </View>
-          </FilterRow>
-          <FilterRow label="Year" value="2018 – 2026">
-            <View style={styles.chipWrap}>
-              {[2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025, 2026].map((y, i) => (
-                <View
-                  key={y}
-                  style={[
-                    styles.chip,
-                    { backgroundColor: i >= 3 ? T.gold : T.surfaceAlt },
-                  ]}
-                >
-                  <Text style={[styles.chipText, { fontWeight: i >= 3 ? '700' : '600' }]}>{y}</Text>
-                </View>
-              ))}
-            </View>
-          </FilterRow>
-          <FilterRow label="Body type" value="3 selected">
-            <View style={styles.gridBody}>
-              {(['Sedan', 'SUV', 'Wagon', 'Coupé', 'Pickup', 'Hatch'] as const).map((n, i) => {
-                const sel = i < 3;
+          <Row label="Price range" value={priceLabel(draft)}>
+            <View style={styles.chipRow}>
+              {PRICE_RANGES.map((r) => {
+                const sel = draft.priceMin === r.min && draft.priceMax === r.max;
                 return (
-                  <View
-                    key={n}
+                  <Pressable
+                    key={r.id}
+                    onPress={() => setDraft((d) => ({ ...d, priceMin: sel ? undefined : r.min, priceMax: sel ? undefined : r.max }))}
+                    style={[styles.chip, { backgroundColor: sel ? T.gold : T.surfaceAlt }]}
+                  >
+                    <Text style={[styles.chipText, { fontWeight: sel ? '700' : '600' }]}>{r.label}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </Row>
+
+          <Row label="Year" value={yearLabel(draft)}>
+            <View style={styles.chipRow}>
+              {YEAR_OPTIONS.map((y) => {
+                const sel = draft.yearMin != null && draft.yearMax == null
+                  ? y === draft.yearMin
+                  : draft.yearMin != null && y >= draft.yearMin && (draft.yearMax == null || y <= draft.yearMax);
+                return (
+                  <Pressable
+                    key={y}
+                    onPress={() => setDraft((d) => {
+                      // toggle a "from this year onwards" filter
+                      if (d.yearMin === y && d.yearMax == null) return { ...d, yearMin: undefined };
+                      return { ...d, yearMin: y, yearMax: undefined };
+                    })}
+                    style={[styles.chip, { backgroundColor: sel ? T.gold : T.surfaceAlt }]}
+                  >
+                    <Text style={[styles.chipText, { fontWeight: sel ? '700' : '600' }]}>{y}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </Row>
+
+          <Row label="Body type" value={selectedLabel(draft.body, BODY_OPTIONS.length)}>
+            <View style={styles.gridBody}>
+              {BODY_OPTIONS.map((b) => {
+                const sel = (draft.body ?? []).includes(b.id);
+                return (
+                  <Pressable
+                    key={b.id}
+                    onPress={() => toggle('body', b.id)}
                     style={[
                       styles.bodyCell,
                       {
@@ -76,35 +148,37 @@ export function FiltersScreen() {
                       },
                     ]}
                   >
-                    <Text style={[styles.bodyText, { color: sel ? '#fff' : T.body }]}>{n}</Text>
-                  </View>
+                    <Text style={[styles.bodyText, { color: sel ? '#fff' : T.body }]}>{b.label}</Text>
+                  </Pressable>
                 );
               })}
             </View>
-          </FilterRow>
-          <FilterRow label="Fuel" value="Petrol, Hybrid">
-            <View style={styles.chipWrap}>
-              {(['Petrol', 'Diesel', 'Hybrid', 'Electric', 'LPG'] as const).map((n, i) => {
-                const sel = i === 0 || i === 2;
+          </Row>
+
+          <Row label="Fuel" value={selectedLabel(draft.fuel, FUEL_OPTIONS.length)}>
+            <View style={styles.chipRow}>
+              {FUEL_OPTIONS.map((f) => {
+                const sel = (draft.fuel ?? []).includes(f.id);
                 return (
-                  <View
-                    key={n}
+                  <Pressable
+                    key={f.id}
+                    onPress={() => toggle('fuel', f.id)}
                     style={[styles.chip, { backgroundColor: sel ? T.gold : T.surfaceAlt }]}
                   >
-                    <Text style={[styles.chipText, { fontWeight: sel ? '700' : '600' }]}>{n}</Text>
-                  </View>
+                    <Text style={[styles.chipText, { fontWeight: sel ? '700' : '600' }]}>{f.label}</Text>
+                  </Pressable>
                 );
               })}
             </View>
-          </FilterRow>
+          </Row>
         </ScrollView>
         <View style={styles.footer}>
           <View style={{ flex: 1 }}>
-            <Button variant="outline" size="md">Save search</Button>
+            <Button variant="outline" size="md" onPress={() => nav.goBack()}>Cancel</Button>
           </View>
           <View style={{ flex: 1.4 }}>
-            <Button variant="primary" size="md" onPress={() => nav.goBack()}>
-              Show 142 cars
+            <Button variant="primary" size="md" onPress={apply}>
+              {count == null ? 'Apply' : `Show ${count} car${count === 1 ? '' : 's'}`}
             </Button>
           </View>
         </View>
@@ -113,7 +187,7 @@ export function FiltersScreen() {
   );
 }
 
-function FilterRow({ label, value, children }: { label: string; value: string; children: React.ReactNode }) {
+function Row({ label, value, children }: { label: string; value: string; children: React.ReactNode }) {
   return (
     <View style={{ marginTop: 16 }}>
       <View style={styles.filterHead}>
@@ -123,6 +197,24 @@ function FilterRow({ label, value, children }: { label: string; value: string; c
       {children}
     </View>
   );
+}
+
+function priceLabel(d: BrowseFilters): string {
+  if (d.priceMin == null && d.priceMax == null) return 'Any';
+  const lo = d.priceMin != null ? `€${(d.priceMin / 1000).toFixed(0)}k` : '€0';
+  const hi = d.priceMax != null ? `€${(d.priceMax / 1000).toFixed(0)}k` : 'no cap';
+  return `${lo} – ${hi}`;
+}
+
+function yearLabel(d: BrowseFilters): string {
+  if (d.yearMin == null && d.yearMax == null) return 'Any';
+  return `${d.yearMin ?? 'any'} – ${d.yearMax ?? 'today'}`;
+}
+
+function selectedLabel(arr: string[] | undefined, total: number): string {
+  if (!arr || arr.length === 0) return 'Any';
+  if (arr.length === total) return 'Any';
+  return `${arr.length} selected`;
 }
 
 const styles = StyleSheet.create({
@@ -143,53 +235,13 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     marginBottom: 14,
   },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 14,
-  },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
   title: { fontSize: 18, fontWeight: '800', color: T.ink, fontFamily: T.font },
   reset: { fontSize: 13, color: T.body, fontWeight: '600', fontFamily: T.font },
-  filterHead: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'baseline',
-    marginBottom: 8,
-  },
+  filterHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 },
   filterLabel: { fontSize: 13, fontWeight: '800', color: T.ink, fontFamily: T.font },
   filterValue: { fontSize: 12, color: T.body, fontFamily: T.mono },
-  priceWrap: { height: 60, position: 'relative' },
-  priceTrack: {
-    position: 'absolute',
-    top: 50,
-    left: 0,
-    right: 0,
-    height: 4,
-    backgroundColor: T.hairline,
-    borderRadius: 99,
-  },
-  priceFill: {
-    position: 'absolute',
-    top: 50,
-    height: 4,
-    left: '20%',
-    right: '22%',
-    backgroundColor: T.gold,
-    borderRadius: 99,
-  },
-  knob: {
-    position: 'absolute',
-    top: 44,
-    width: 18,
-    height: 18,
-    borderRadius: 99,
-    backgroundColor: '#fff',
-    borderWidth: 2,
-    borderColor: T.gold,
-    ...shadow.elev,
-  },
-  chipWrap: { flexDirection: 'row', gap: 6, flexWrap: 'wrap' },
+  chipRow: { flexDirection: 'row', gap: 6, flexWrap: 'wrap' },
   chip: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 99 },
   chipText: { fontSize: 12, color: T.ink, fontFamily: T.font },
   gridBody: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },

@@ -28,13 +28,13 @@ export type RootStackParamList = {
   Filters: undefined;
   CarDetail: { id?: string } | undefined;
 
-  ChatDetail: { name?: string } | undefined;
+  ChatDetail: { chatId?: string; sellerId?: string; listingId?: string } | undefined;
 
   Compare: undefined;
   SavedSearches: undefined;
   Recent: undefined;
-  Appointment: undefined;
-  Financing: undefined;
+  Appointment: { listingId?: string } | undefined;
+  Financing: { listingId?: string } | undefined;
 
   SellForm: undefined;
   SellPhotos: undefined;

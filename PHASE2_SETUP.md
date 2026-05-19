@@ -13,9 +13,14 @@ This adds real auth, a real database, and the AI-powered dealer auto-import flow
 
 ## 2. Apply the database schema
 
-In Supabase dashboard → **SQL Editor** → **New query** → paste the contents of `supabase/migrations/0001_init.sql` → **Run**.
+Run both migrations in order in Supabase dashboard → **SQL Editor** → **New query**:
 
-You should see tables appear under **Table Editor**: `profiles`, `dealers`, `social_accounts`, `listings`, `listing_photos`, `favorites`, `import_jobs`, `chats`, `messages`.
+1. Paste the contents of `supabase/migrations/0001_init.sql` → **Run**
+2. Paste the contents of `supabase/migrations/0002_phase2_complete.sql` → **Run**
+
+You should see tables appear under **Table Editor**: `profiles`, `dealers`, `social_accounts`, `listings`, `listing_photos`, `favorites`, `import_jobs`, `chats`, `messages`, `saved_searches`, `recent_views`, `appointments`. Plus four `listing_counts_*` views.
+
+The second migration also enables Realtime broadcasting for the `messages` table, which powers live chat.
 
 ## 3. Get a Groq API key for AI extraction (free tier)
 

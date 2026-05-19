@@ -12,6 +12,7 @@ import { CarCardSmall } from '@/components/CarCards';
 import { CARS, Car } from '@/data/mock';
 import { fetchListings, ListingWithCover } from '@/lib/db';
 import { hasSupabaseConfig } from '@/lib/supabase';
+import { useBrowseFilters } from '@/lib/browse';
 import { RootStackParamList } from '@/navigation/types';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
@@ -37,9 +38,19 @@ function toCard(l: ListingWithCover): Car {
 export function HomeScreen() {
   const nav = useNavigation<Nav>();
   const insets = useSafeAreaInsets();
+  const { resetTo } = useBrowseFilters();
   const [cars, setCars] = useState<Car[]>(CARS);
   const [refreshing, setRefreshing] = useState(false);
   const [usingMock, setUsingMock] = useState(true);
+
+  const openBalkans = () => {
+    resetTo({ marketplace: 'balkans' });
+    nav.navigate('BalkanCountries');
+  };
+  const openImport = () => {
+    resetTo({ marketplace: 'import' });
+    nav.navigate('Continent');
+  };
 
   const load = useCallback(async () => {
     if (!hasSupabaseConfig) return;
@@ -96,10 +107,10 @@ export function HomeScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Where to?</Text>
           <View style={styles.heroGrid}>
-            <Pressable onPress={() => nav.navigate('BalkanCountries')} style={{ flex: 1 }}>
+            <Pressable onPress={openBalkans} style={{ flex: 1 }}>
               <CategoryCard title="Cars within Balkans" sub="2,872 listings" hue={30} primary />
             </Pressable>
-            <Pressable onPress={() => nav.navigate('Continent')} style={{ flex: 1 }}>
+            <Pressable onPress={openImport} style={{ flex: 1 }}>
               <CategoryCard title="Cars for Import" sub="13,610 worldwide" hue={210} />
             </Pressable>
           </View>
