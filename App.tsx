@@ -6,6 +6,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
+import { AuthProvider } from '@/lib/auth';
 import { RootStackParamList } from '@/navigation/types';
 import { TabsNavigator } from '@/navigation/TabsNavigator';
 
@@ -57,7 +58,8 @@ export default function App() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        <NavigationContainer>
+        <AuthProvider>
+          <NavigationContainer>
           <Stack.Navigator
             initialRouteName="Welcome"
             screenOptions={{ headerShown: false, contentStyle: { backgroundColor: '#FAFAF7' } }}
@@ -103,8 +105,9 @@ export default function App() {
             <Stack.Screen name="SocialReview" component={SocialReviewScreen} />
             <Stack.Screen name="DealerDash" component={DealerDashboardScreen} />
           </Stack.Navigator>
-          <StatusBar style="dark" />
-        </NavigationContainer>
+            <StatusBar style="dark" />
+          </NavigationContainer>
+        </AuthProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

@@ -46,7 +46,7 @@ export type RootStackParamList = {
   SocialPermissions: undefined;
   SocialImporting: undefined;
   SocialImported: undefined;
-  SocialReview: undefined;
+  SocialReview: { jobId?: string } | undefined;
 
   DealerDash: undefined;
 };

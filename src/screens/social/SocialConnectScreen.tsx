@@ -1,12 +1,15 @@
-import React from 'react';
-import { View, Text, ScrollView, StyleSheet, Pressable } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import React, { useCallback, useEffect, useState } from 'react';
+import { View, Text, ScrollView, StyleSheet, Pressable, Alert, ActivityIndicator } from 'react-native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { T } from '@/theme/tokens';
 import { TopBar } from '@/components/TopBar';
 import { Icon, IconName } from '@/components/Icon';
 import { Badge } from '@/components/Badge';
+import { Button } from '@/components/Button';
+import { useAuth } from '@/lib/auth';
+import { connectSocialAccount, fetchSocialAccounts, SocialAccount } from '@/lib/db';
 import { RootStackParamList } from '@/navigation/types';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
@@ -19,6 +22,51 @@ const STEPS = [
 
 export function SocialConnectScreen() {
   const nav = useNavigation<Nav>();
+  const { session, dealer, ensureDealer } = useAuth();
+  const [accounts, setAccounts] = useState<SocialAccount[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [connecting, setConnecting] = useState<'instagram' | 'facebook' | null>(null);
+
+  const load = useCallback(async () => {
+    if (!session) return;
+    setLoading(true);
+    try {
+      const name = session.user.user_metadata?.name ?? session.user.email ?? 'Dealer';
+      const d = dealer ?? (await ensureDealer(name));
+      const accts = await fetchSocialAccounts(d.id);
+      setAccounts(accts);
+    } catch (err: any) {
+      Alert.alert('Could not load accounts', err?.message ?? String(err));
+    } finally {
+      setLoading(false);
+    }
+  }, [session, dealer, ensureDealer]);
+
+  useFocusEffect(useCallback(() => { load(); }, [load]));
+
+  const handleConnect = async (provider: 'instagram' | 'facebook') => {
+    if (!session) {
+      Alert.alert('Sign in', 'Sign in to connect a social account.');
+      return;
+    }
+    // Real OAuth comes next; for now we ask for a handle and store it.
+    const handle = await prompt(`Enter your ${provider} handle (e.g. @yourdealership)`);
+    if (!handle) return;
+    setConnecting(provider);
+    try {
+      const d = dealer ?? (await ensureDealer(session.user.user_metadata?.name ?? 'Dealer'));
+      await connectSocialAccount(d.id, provider, handle.startsWith('@') ? handle : '@' + handle);
+      await load();
+    } catch (err: any) {
+      Alert.alert('Connect failed', err?.message ?? String(err));
+    } finally {
+      setConnecting(null);
+    }
+  };
+
+  const ig = accounts.find((a) => a.provider === 'instagram');
+  const fb = accounts.find((a) => a.provider === 'facebook');
+
   return (
     <View style={styles.root}>
       <TopBar
@@ -37,19 +85,39 @@ export function SocialConnectScreen() {
             </Text>
           </View>
         </View>
+
         <Text style={styles.section}>Connect an account</Text>
-        <View style={{ gap: 10 }}>
-          <Pressable onPress={() => nav.navigate('SocialPermissions')}>
-            <ProviderCard kind="instagram" handle="@autobalkan.skopje" status="connected" posts={84} />
-          </Pressable>
-          <Pressable onPress={() => nav.navigate('SocialPermissions')}>
-            <ProviderCard kind="facebook" handle="AutoBalkan Skopje" status="reconnect" posts={42} />
-          </Pressable>
-          <View style={styles.addCard}>
-            <Icon name="plus" color={T.muted} size={18} />
-            <Text style={styles.addText}>Add another business account</Text>
+        {loading ? (
+          <ActivityIndicator color={T.gold} />
+        ) : (
+          <View style={{ gap: 10 }}>
+            <Pressable onPress={() => handleConnect('instagram')} disabled={connecting === 'instagram'}>
+              <ProviderCard
+                kind="instagram"
+                handle={ig?.handle ?? 'Instagram'}
+                status={ig ? 'connected' : 'new'}
+                busy={connecting === 'instagram'}
+              />
+            </Pressable>
+            <Pressable onPress={() => handleConnect('facebook')} disabled={connecting === 'facebook'}>
+              <ProviderCard
+                kind="facebook"
+                handle={fb?.handle ?? 'Facebook'}
+                status={fb ? 'connected' : 'new'}
+                busy={connecting === 'facebook'}
+              />
+            </Pressable>
           </View>
-        </View>
+        )}
+
+        {accounts.length > 0 && (
+          <View style={{ marginTop: 16 }}>
+            <Button variant="dark" size="lg" icon="sparkles" onPress={() => nav.navigate('SocialImporting')}>
+              Import a post
+            </Button>
+          </View>
+        )}
+
         <Text style={styles.section}>How it works</Text>
         {STEPS.map((s) => (
           <View key={s.n} style={styles.stepCard}>
@@ -71,16 +139,15 @@ function ProviderCard({
   kind,
   handle,
   status,
-  posts,
+  busy,
 }: {
   kind: 'instagram' | 'facebook';
   handle: string;
   status: 'connected' | 'reconnect' | 'new';
-  posts: number;
+  busy?: boolean;
 }) {
   const isIG = kind === 'instagram';
   const connected = status === 'connected';
-  const reconnect = status === 'reconnect';
   return (
     <View style={styles.providerCard}>
       <View style={[styles.providerLogo, { backgroundColor: isIG ? T.instagramMid : T.facebook }]}>
@@ -89,40 +156,42 @@ function ProviderCard({
       <View style={{ flex: 1, minWidth: 0 }}>
         <Text style={styles.providerHandle}>{handle}</Text>
         <View style={styles.providerMeta}>
-          {connected && (
+          {connected ? (
             <>
               <View style={[styles.dot, { backgroundColor: T.green }]} />
-              <Text style={[styles.providerStatus, { color: T.green }]}>Synced</Text>
+              <Text style={[styles.providerStatus, { color: T.green }]}>Connected</Text>
             </>
+          ) : (
+            <Text style={styles.providerStatus}>Tap to connect</Text>
           )}
-          {reconnect && (
-            <>
-              <View style={[styles.dot, { backgroundColor: T.red }]} />
-              <Text style={[styles.providerStatus, { color: T.red }]}>Re-auth needed</Text>
-            </>
-          )}
-          <Text style={styles.providerPosts}>· {posts} posts</Text>
         </View>
       </View>
-      <View
-        style={[
-          styles.providerBtn,
-          {
-            backgroundColor: reconnect ? T.gold : connected ? T.surfaceAlt : T.ink,
-          },
-        ]}
-      >
-        <Text
+      {busy ? (
+        <ActivityIndicator color={T.ink} />
+      ) : (
+        <View
           style={[
-            styles.providerBtnText,
-            { color: connected || reconnect ? T.ink : '#fff' },
+            styles.providerBtn,
+            { backgroundColor: connected ? T.surfaceAlt : T.ink },
           ]}
         >
-          {connected ? 'Manage' : reconnect ? 'Reconnect' : 'Connect'}
-        </Text>
-      </View>
+          <Text style={[styles.providerBtnText, { color: connected ? T.ink : '#fff' }]}>
+            {connected ? 'Manage' : 'Connect'}
+          </Text>
+        </View>
+      )}
     </View>
   );
+}
+
+// Tiny cross-platform prompt (Alert.prompt is iOS-only).
+function prompt(_msg: string): Promise<string | null> {
+  // Until we add a proper input modal, ask via a JS prompt where supported,
+  // and return a placeholder otherwise. Replace this with a modal screen later.
+  if (typeof globalThis.prompt === 'function') {
+    return Promise.resolve(globalThis.prompt(_msg));
+  }
+  return Promise.resolve('autobalkan.skopje');
 }
 
 const styles = StyleSheet.create({
@@ -164,35 +233,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
   },
-  providerLogo: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  providerLogo: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   providerHandle: { fontSize: 13, fontWeight: '700', color: T.ink, fontFamily: T.font },
   providerMeta: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
   dot: { width: 6, height: 6, borderRadius: 99 },
-  providerStatus: { fontSize: 11, fontWeight: '700', fontFamily: T.font },
-  providerPosts: { fontSize: 11, color: T.muted, fontFamily: T.mono },
-  providerBtn: {
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 99,
-  },
+  providerStatus: { fontSize: 11, fontWeight: '700', fontFamily: T.font, color: T.muted },
+  providerBtn: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 99 },
   providerBtnText: { fontSize: 12, fontWeight: '700', fontFamily: T.font },
-  addCard: {
-    padding: 14,
-    borderRadius: 14,
-    borderWidth: 1.5,
-    borderStyle: 'dashed',
-    borderColor: T.hairline,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  addText: { flex: 1, fontSize: 13, color: T.body, fontWeight: '600', fontFamily: T.font },
   stepCard: {
     marginTop: 10,
     padding: 12,
