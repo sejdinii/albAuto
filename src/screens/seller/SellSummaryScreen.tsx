@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, ScrollView, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, Image } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -9,30 +9,34 @@ import { TopBar } from '@/components/TopBar';
 import { Button } from '@/components/Button';
 import { Icon } from '@/components/Icon';
 import { CarPhoto } from '@/components/CarPhoto';
+import { useSellDraft } from '@/lib/sellFlow';
 import { RootStackParamList } from '@/navigation/types';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
-const SUMMARY: [string, string][] = [
-  ['Make & Model', 'BMW · M3'],
-  ['Trim', 'Competition'],
-  ['Year', '2024'],
-  ['Kilometers', '4,200 km'],
-  ['Body type', 'Sedan'],
-  ['Regional specs', 'EU Specs'],
-  ['Price', '€ 121,300'],
-  ['Contact phone', '+355 69 555 0123'],
-  ['Photos', '8 photos · 1 video'],
-];
-
 export function SellSummaryScreen() {
   const nav = useNavigation<Nav>();
   const insets = useSafeAreaInsets();
+  const { draft } = useSellDraft();
+
+  const cover = draft.photos[0]?.uri;
+  const summary: [string, string][] = [
+    ['Make & Model', `${draft.make} · ${draft.model}`.trim()],
+    ['Trim', draft.trim || '—'],
+    ['Year', draft.year || '—'],
+    ['Kilometers', draft.km ? `${Number(draft.km).toLocaleString()} km` : '—'],
+    ['Body type', draft.body || '—'],
+    ['Fuel', draft.fuel || '—'],
+    ['Price', draft.price_eur ? `€ ${Number(draft.price_eur).toLocaleString()}` : '—'],
+    ['Location', [draft.city, draft.country].filter(Boolean).join(', ') || '—'],
+    ['Photos', `${draft.photos.length} photo${draft.photos.length === 1 ? '' : 's'}`],
+  ];
+
   return (
     <View style={styles.root}>
       <TopBar
         title="Summary"
-        subtitle="Step 5 of 5 · Review"
+        subtitle="Step 4 of 5 · Review"
         leading="close"
         variant="white"
         onBack={() => nav.goBack()}
@@ -40,26 +44,38 @@ export function SellSummaryScreen() {
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 100 }}>
         <Text style={styles.title}>You're almost there!</Text>
         <Text style={styles.sub}>Check everything looks right before publishing.</Text>
+
         <View style={styles.previewCard}>
-          <CarPhoto hue={30} height={140} />
+          {cover ? (
+            <Image source={{ uri: cover }} style={styles.coverImg} />
+          ) : (
+            <CarPhoto hue={30} height={140} />
+          )}
           <View style={{ padding: 12 }}>
             <Text style={styles.previewLabel}>PREVIEW</Text>
-            <Text style={styles.previewTitle}>2024 BMW M3 Competition</Text>
-            <Text style={styles.previewSub}>4,200 km · EU Specs · Tirana</Text>
-            <Text style={styles.previewPrice}>€ 121,300</Text>
+            <Text style={styles.previewTitle}>
+              {[draft.year, draft.make, draft.model].filter(Boolean).join(' ') || 'Your car'}
+            </Text>
+            <Text style={styles.previewSub}>
+              {[draft.km && `${Number(draft.km).toLocaleString()} km`, draft.body, draft.city].filter(Boolean).join(' · ')}
+            </Text>
+            <Text style={styles.previewPrice}>
+              {draft.price_eur ? `€ ${Number(draft.price_eur).toLocaleString()}` : 'Price not set'}
+            </Text>
           </View>
         </View>
+
         <View style={styles.summaryBox}>
           <View style={styles.summaryHead}>
             <Text style={styles.summaryHeadLabel}>LISTING SUMMARY</Text>
-            <Text style={styles.summaryEdit}>Edit ›</Text>
+            <Text style={styles.summaryEdit} onPress={() => nav.navigate('SellForm')}>Edit ›</Text>
           </View>
-          {SUMMARY.map(([k, v], i) => (
+          {summary.map(([k, v], i) => (
             <View
               key={k}
               style={[
                 styles.summaryRow,
-                { borderBottomWidth: i < SUMMARY.length - 1 ? StyleSheet.hairlineWidth : 0 },
+                { borderBottomWidth: i < summary.length - 1 ? StyleSheet.hairlineWidth : 0 },
               ]}
             >
               <Text style={styles.summaryKey}>{k}</Text>
@@ -67,19 +83,22 @@ export function SellSummaryScreen() {
             </View>
           ))}
         </View>
-        <View style={{ marginTop: 14 }}>
-          <Text style={styles.descTitle}>Description</Text>
-          <View style={styles.descBox}>
-            <Text style={styles.descText}>
-              Single owner, fully optioned. Carbon ceramic brakes, M Drive Pro, M carbon bucket seats. Service history available...
-            </Text>
+
+        {draft.description ? (
+          <View style={{ marginTop: 14 }}>
+            <Text style={styles.descTitle}>Description</Text>
+            <View style={styles.descBox}>
+              <Text style={styles.descText}>{draft.description}</Text>
+            </View>
           </View>
+        ) : (
           <View style={styles.aiHint}>
             <Icon name="sparkles" color={T.goldDark} size={14} />
-            <Text style={styles.aiHintText}>AI-suggested. Tap to edit.</Text>
+            <Text style={styles.aiHintText}>No description yet — buyers prefer listings with one.</Text>
           </View>
-        </View>
+        )}
       </ScrollView>
+
       <View style={[styles.bottom, { paddingBottom: 12 + insets.bottom }, shadow.sticky]}>
         <Button variant="primary" size="md" iconRight="chevR" onPress={() => nav.navigate('SellOptions')}>
           Choose ad type
@@ -101,6 +120,7 @@ const styles = StyleSheet.create({
     borderColor: T.hairline,
     overflow: 'hidden',
   },
+  coverImg: { width: '100%', height: 140 },
   previewLabel: { fontSize: 11, color: T.muted, fontFamily: T.mono },
   previewTitle: { fontSize: 15, fontWeight: '800', color: T.ink, marginTop: 4, fontFamily: T.font },
   previewSub: { fontSize: 12, color: T.body, marginTop: 2, fontFamily: T.font },
@@ -123,12 +143,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: T.hairline,
   },
-  summaryHeadLabel: {
-    fontSize: 11,
-    color: T.muted,
-    fontFamily: T.mono,
-    letterSpacing: 0.5,
-  },
+  summaryHeadLabel: { fontSize: 11, color: T.muted, fontFamily: T.mono, letterSpacing: 0.5 },
   summaryEdit: { fontSize: 12, fontWeight: '700', color: T.ink, fontFamily: T.font },
   summaryRow: {
     paddingHorizontal: 14,
@@ -138,7 +153,7 @@ const styles = StyleSheet.create({
     borderBottomColor: T.hairline,
   },
   summaryKey: { fontSize: 12, color: T.muted, fontFamily: T.font },
-  summaryVal: { fontSize: 13, fontWeight: '600', color: T.ink, fontFamily: T.font },
+  summaryVal: { fontSize: 13, fontWeight: '600', color: T.ink, fontFamily: T.font, maxWidth: '60%', textAlign: 'right' },
   descTitle: { fontSize: 13, fontWeight: '800', color: T.ink, marginBottom: 8, fontFamily: T.font },
   descBox: {
     padding: 12,
@@ -149,7 +164,7 @@ const styles = StyleSheet.create({
   },
   descText: { fontSize: 12, color: T.body, lineHeight: 18, fontFamily: T.font },
   aiHint: {
-    marginTop: 6,
+    marginTop: 14,
     padding: 10,
     borderRadius: 10,
     backgroundColor: T.goldTint,

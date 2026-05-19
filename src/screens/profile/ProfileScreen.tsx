@@ -1,11 +1,12 @@
 import React from 'react';
-import { View, Text, ScrollView, StyleSheet, Pressable } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, Pressable, Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { T } from '@/theme/tokens';
 import { Icon, IconName } from '@/components/Icon';
+import { useAuth } from '@/lib/auth';
 import { RootStackParamList } from '@/navigation/types';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
@@ -13,6 +14,18 @@ type Nav = NativeStackNavigationProp<RootStackParamList>;
 export function ProfileScreen() {
   const nav = useNavigation<Nav>();
   const insets = useSafeAreaInsets();
+  const { session, signOut } = useAuth();
+
+  const handleSignOut = async () => {
+    await signOut();
+    nav.reset({ index: 0, routes: [{ name: 'Welcome' }] });
+  };
+
+  const userName = session?.user.user_metadata?.name ?? session?.user.email ?? 'Guest';
+  const userInit = (userName[0] ?? 'G').toUpperCase();
+  const userMeta = session
+    ? `Signed in as ${session.user.email}`
+    : 'Not signed in — tap Sign in below';
   return (
     <View style={styles.root}>
       <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
@@ -24,18 +37,22 @@ export function ProfileScreen() {
           </View>
           <View style={styles.userRow}>
             <View style={styles.userAvatar}>
-              <Text style={styles.userInit}>AM</Text>
-              <View style={styles.userVerified}>
-                <Icon name="verified" color={T.gold} size={22} />
-              </View>
+              <Text style={styles.userInit}>{userInit}</Text>
+              {session && (
+                <View style={styles.userVerified}>
+                  <Icon name="verified" color={T.gold} size={22} />
+                </View>
+              )}
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.userName}>Andrej Mitrev</Text>
-              <Text style={styles.userMeta}>Member since Feb 2024 · Skopje</Text>
-              <View style={styles.verifiedBadge}>
-                <Icon name="verified" color={T.gold} size={10} />
-                <Text style={styles.verifiedBadgeText}>VERIFIED</Text>
-              </View>
+              <Text style={styles.userName}>{userName}</Text>
+              <Text style={styles.userMeta}>{userMeta}</Text>
+              {session && (
+                <View style={styles.verifiedBadge}>
+                  <Icon name="verified" color={T.gold} size={10} />
+                  <Text style={styles.verifiedBadgeText}>VERIFIED</Text>
+                </View>
+              )}
             </View>
           </View>
         </View>
@@ -69,6 +86,23 @@ export function ProfileScreen() {
             <MenuItem icon="questionmark" label="Help & FAQ" />
             <MenuItem icon="doc" label="Terms & privacy" last />
           </Group>
+          {session ? (
+            <Pressable
+              onPress={() => Alert.alert('Sign out?', 'You can sign back in anytime.', [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'Sign out', style: 'destructive', onPress: handleSignOut },
+              ])}
+              style={styles.signOut}
+            >
+              <Icon name="close" color={T.red} size={18} />
+              <Text style={styles.signOutText}>Sign out</Text>
+            </Pressable>
+          ) : (
+            <Pressable onPress={() => nav.navigate('Welcome')} style={styles.signIn}>
+              <Icon name="lock" color={T.ink} size={18} />
+              <Text style={styles.signInText}>Sign in</Text>
+            </Pressable>
+          )}
           <View style={styles.city}>
             <Icon name="pin" color={T.gold} size={20} />
             <View style={{ flex: 1 }}>
@@ -265,4 +299,27 @@ const styles = StyleSheet.create({
   },
   cityLabel: { fontSize: 11, color: T.muted, fontFamily: T.mono, letterSpacing: 0.5 },
   cityName: { fontSize: 14, fontWeight: '700', color: T.ink, marginTop: 2, fontFamily: T.font },
+  signOut: {
+    marginTop: 4,
+    padding: 14,
+    backgroundColor: '#fff',
+    borderRadius: 14,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: T.hairline,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  signOutText: { fontSize: 13, fontWeight: '700', color: T.red, fontFamily: T.font },
+  signIn: {
+    marginTop: 4,
+    padding: 14,
+    backgroundColor: T.ink,
+    borderRadius: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+  },
+  signInText: { fontSize: 13, fontWeight: '700', color: '#fff', fontFamily: T.font },
 });

@@ -300,3 +300,84 @@ function pickHue(seed: string): number {
   for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) | 0;
   return Math.abs(h) % 360;
 }
+
+// ============================================================
+// MANUAL LISTING CREATE
+// ============================================================
+
+export type NewListing = {
+  make: string;
+  model: string;
+  trim?: string;
+  year: number;
+  km?: number | null;
+  body?: string | null;
+  fuel?: string | null;
+  price_eur?: number | null;
+  city?: string | null;
+  country?: string | null;
+  description?: string | null;
+  tier?: 'standard' | 'premium';
+};
+
+export async function createListing(sellerId: string, draft: NewListing): Promise<Listing> {
+  const hue = pickHue(`${draft.make}${draft.model}`);
+  const { data, error } = await supabase
+    .from('listings')
+    .insert({
+      seller_id: sellerId,
+      status: 'active',
+      tier: draft.tier ?? 'standard',
+      make: draft.make,
+      model: draft.model,
+      trim: draft.trim ?? null,
+      year: draft.year,
+      km: draft.km ?? null,
+      body: draft.body ?? null,
+      fuel: draft.fuel ?? null,
+      price_eur: draft.price_eur ?? null,
+      city: draft.city ?? null,
+      country: draft.country ?? null,
+      description: draft.description ?? null,
+      hue,
+      source: 'manual',
+      published_at: new Date().toISOString(),
+    })
+    .select('*')
+    .single();
+  if (error) throw error;
+  return data as Listing;
+}
+
+export async function attachPhotosToListing(
+  listingId: string,
+  photos: { storagePath: string; url: string }[],
+) {
+  if (photos.length === 0) return;
+  const rows = photos.map((p, i) => ({
+    listing_id: listingId,
+    url: p.url,
+    storage_path: p.storagePath,
+    position: i,
+    is_cover: i === 0,
+  }));
+  const { error } = await supabase.from('listing_photos').insert(rows);
+  if (error) throw error;
+}
+
+// ============================================================
+// LISTING DETAIL
+// ============================================================
+
+export async function fetchListingDetail(id: string) {
+  const { data, error } = await supabase
+    .from('listings')
+    .select('*, listing_photos(url, position, is_cover), profiles!seller_id(name, verified)')
+    .eq('id', id)
+    .single();
+  if (error) throw error;
+  return data as Listing & {
+    listing_photos: { url: string; position: number; is_cover: boolean }[];
+    profiles: { name: string | null; verified: string | null } | null;
+  };
+}
