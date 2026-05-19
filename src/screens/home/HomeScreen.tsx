@@ -1,46 +1,88 @@
-import React from 'react';
-import { View, Text, ScrollView, StyleSheet, Pressable } from 'react-native';
+import React, { useCallback, useState } from 'react';
+import { View, Text, ScrollView, StyleSheet, Pressable, RefreshControl } from 'react-native';
 import Svg, { Path, Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { T, shadow, hueGradient } from '@/theme/tokens';
 import { Logo } from '@/components/Logo';
 import { Icon } from '@/components/Icon';
 import { CarCardSmall } from '@/components/CarCards';
-import { CARS } from '@/data/mock';
+import { CARS, Car } from '@/data/mock';
+import { fetchListings, ListingWithCover } from '@/lib/db';
+import { hasSupabaseConfig } from '@/lib/supabase';
 import { RootStackParamList } from '@/navigation/types';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
+function toCard(l: ListingWithCover): Car {
+  return {
+    id: l.id,
+    make: l.make,
+    model: l.model,
+    trim: l.trim ?? '',
+    subtitle: l.body ?? '',
+    year: l.year,
+    km: l.km ? `${l.km.toLocaleString()} km` : '—',
+    price: l.price_eur ? `€ ${l.price_eur.toLocaleString()}` : '—',
+    priceEur: l.price_eur ? `€ ${l.price_eur.toLocaleString()}` : '—',
+    hue: l.hue ?? 30,
+    label: l.id.slice(0, 2).toUpperCase(),
+    photos: { cur: 1, total: l.photo_count || 1 },
+    location: [l.city, l.country].filter(Boolean).join(', '),
+  };
+}
+
 export function HomeScreen() {
   const nav = useNavigation<Nav>();
   const insets = useSafeAreaInsets();
+  const [cars, setCars] = useState<Car[]>(CARS);
+  const [refreshing, setRefreshing] = useState(false);
+  const [usingMock, setUsingMock] = useState(true);
+
+  const load = useCallback(async () => {
+    if (!hasSupabaseConfig) return;
+    setRefreshing(true);
+    try {
+      const rows = await fetchListings({ limit: 12 });
+      if (rows.length > 0) {
+        setCars(rows.map(toCard));
+        setUsingMock(false);
+      } else {
+        setCars(CARS);
+        setUsingMock(true);
+      }
+    } catch {
+      setCars(CARS);
+      setUsingMock(true);
+    } finally {
+      setRefreshing(false);
+    }
+  }, []);
+
+  useFocusEffect(useCallback(() => { load(); }, [load]));
+
   return (
     <View style={styles.root}>
-      <ScrollView contentContainerStyle={{ paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
-        {/* Header */}
+      <ScrollView
+        contentContainerStyle={{ paddingBottom: 100 }}
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={load} />}
+      >
         <View style={[styles.header, { paddingTop: Math.max(insets.top, 16) }]}>
           <Logo size={22} />
           <View style={styles.headerActions}>
-            <Pressable
-              onPress={() => nav.navigate('Notifications')}
-              style={styles.iconBtn}
-            >
+            <Pressable onPress={() => nav.navigate('Notifications')} style={styles.iconBtn}>
               <Icon name="bell" color={T.ink} size={18} />
               <View style={styles.dot} />
             </Pressable>
-            <Pressable
-              onPress={() => nav.navigate('Tabs', { screen: 'MenuTab' })}
-              style={styles.avatar}
-            >
+            <Pressable onPress={() => nav.navigate('Tabs', { screen: 'MenuTab' })} style={styles.avatar}>
               <Text style={styles.avatarText}>AM</Text>
             </Pressable>
           </View>
         </View>
 
-        {/* Search */}
         <Pressable onPress={() => nav.navigate('Search')} style={styles.searchWrap}>
           <View style={[styles.search, shadow.card]}>
             <Icon name="search" color={T.muted} size={20} />
@@ -51,7 +93,6 @@ export function HomeScreen() {
           </View>
         </Pressable>
 
-        {/* Hero categories */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Where to?</Text>
           <View style={styles.heroGrid}>
@@ -64,15 +105,14 @@ export function HomeScreen() {
           </View>
         </View>
 
-        {/* For you */}
         <View style={styles.section}>
           <View style={styles.sectionHead}>
-            <Text style={styles.sectionTitle}>For you</Text>
+            <Text style={styles.sectionTitle}>{usingMock ? 'Sample inventory' : 'For you'}</Text>
             <Text style={styles.seeAll}>See all</Text>
           </View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             <View style={{ flexDirection: 'row', gap: 10, paddingRight: 16 }}>
-              {CARS.slice(3, 6).map((c) => (
+              {cars.slice(0, 6).map((c) => (
                 <Pressable
                   key={c.id}
                   onPress={() => nav.navigate('CarDetail', { id: c.id })}
@@ -85,17 +125,16 @@ export function HomeScreen() {
           </ScrollView>
         </View>
 
-        {/* New listings */}
         <View style={[styles.section, { paddingHorizontal: 16 }]}>
           <View style={styles.sectionHead}>
-            <Text style={styles.sectionTitle}>New listings</Text>
+            <Text style={styles.sectionTitle}>{usingMock ? 'Sample listings' : 'New listings'}</Text>
             <View style={styles.allCities}>
               <Text style={styles.allCitiesText}>All cities</Text>
               <Icon name="chevD" size={12} color={T.muted} />
             </View>
           </View>
           <View style={styles.grid3}>
-            {CARS.slice(0, 6).map((c) => (
+            {cars.slice(0, 6).map((c) => (
               <Pressable
                 key={c.id}
                 onPress={() => nav.navigate('CarDetail', { id: c.id })}
@@ -106,6 +145,15 @@ export function HomeScreen() {
             ))}
           </View>
         </View>
+
+        {usingMock && hasSupabaseConfig && (
+          <View style={styles.mockHint}>
+            <Icon name="sparkles" color={T.goldDark} size={14} />
+            <Text style={styles.mockHintText}>
+              Showing samples. Publish a listing (Sell tab or dealer import) and it appears here.
+            </Text>
+          </View>
+        )}
       </ScrollView>
     </View>
   );
@@ -135,12 +183,7 @@ function CategoryCard({ title, sub, hue, primary }: { title: string; sub: string
           <Rect x="0" y="0" width="100%" height="100%" fill={`url(#${gid})`} />
         </Svg>
       )}
-      <Svg
-        viewBox="0 0 200 100"
-        style={styles.catCar}
-        width={140}
-        height={70}
-      >
+      <Svg viewBox="0 0 200 100" style={styles.catCar} width={140} height={70}>
         <Path
           d="M20 70 Q22 55 38 50 L70 42 Q90 36 110 38 L140 42 Q160 46 170 56 L185 60 Q190 62 188 70 L182 78 L168 78 Q166 86 158 86 Q150 86 148 78 L60 78 Q58 86 50 86 Q42 86 40 78 L28 78 Q18 76 20 70 Z"
           fill={primary ? T.gold : 'rgba(15,15,16,0.85)'}
@@ -148,14 +191,7 @@ function CategoryCard({ title, sub, hue, primary }: { title: string; sub: string
       </Svg>
       <Text style={[styles.catSub, { color: primary ? 'rgba(255,255,255,0.6)' : 'rgba(15,15,16,0.6)' }]}>{sub}</Text>
       <View style={styles.catFoot}>
-        <Text
-          style={[
-            styles.catTitle,
-            { color: primary ? '#fff' : T.ink },
-          ]}
-        >
-          {title}
-        </Text>
+        <Text style={[styles.catTitle, { color: primary ? '#fff' : T.ink }]}>{title}</Text>
         <View style={[styles.catArrow, { backgroundColor: primary ? T.gold : T.ink }]}>
           <Icon name="chevR" color={primary ? T.ink : '#fff'} size={16} strokeWidth={2.4} />
         </View>
@@ -282,4 +318,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  mockHint: {
+    margin: 16,
+    padding: 12,
+    backgroundColor: T.goldTint,
+    borderRadius: 12,
+    flexDirection: 'row',
+    gap: 8,
+    alignItems: 'center',
+  },
+  mockHintText: { flex: 1, fontSize: 11, color: T.body, lineHeight: 15, fontFamily: T.font },
 });

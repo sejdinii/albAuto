@@ -1,80 +1,105 @@
-import React from 'react';
-import { View, Text, ScrollView, StyleSheet } from 'react-native';
+import React, { useState } from 'react';
+import {
+  View, Text, ScrollView, StyleSheet, TextInput, Pressable, Alert, ActivityIndicator,
+} from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
-import { T } from '@/theme/tokens';
+import { T, shadow } from '@/theme/tokens';
 import { TopBar } from '@/components/TopBar';
 import { Button } from '@/components/Button';
-import { Icon, IconName } from '@/components/Icon';
+import { Icon } from '@/components/Icon';
+import { useAuth } from '@/lib/auth';
+import { extractFromCaption } from '@/lib/db';
 import { RootStackParamList } from '@/navigation/types';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
-type Activity = { t: string; s: string; state: 'ok' | 'skip' | 'sync' };
-const ACTIVITY: Activity[] = [
-  { t: 'Parsed caption — found "BMW M3 Competition"', s: '2s ago', state: 'ok' },
-  { t: 'Extracted price "120 000 €" from photo', s: '4s ago', state: 'ok' },
-  { t: 'Detected mileage from EXIF + image OCR', s: '6s ago', state: 'ok' },
-  { t: 'Skipped — post has no car detected', s: '12s ago', state: 'skip' },
-  { t: 'Connected Instagram @autobalkan.skopje', s: '1m ago', state: 'sync' },
-];
-
-function iconFor(s: Activity['state']): IconName {
-  return s === 'ok' ? 'check' : s === 'skip' ? 'close' : 'sync';
-}
-
-function colorFor(s: Activity['state']): string {
-  return s === 'ok' ? T.green : s === 'skip' ? T.muted : T.gold;
-}
+const SAMPLE = `2024 BMW M3 Competition, only 4,200 km, M xDrive, Brooklyn Grey, full warranty. EU Specs. Asking €121,300. Located in Skopje. DM for test drive 🔥 #bmw #m3`;
 
 export function SocialImportingScreen() {
   const nav = useNavigation<Nav>();
   const insets = useSafeAreaInsets();
+  const { dealer, session, ensureDealer } = useAuth();
+  const [caption, setCaption] = useState('');
+  const [photoUrl, setPhotoUrl] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  const run = async () => {
+    if (!session) {
+      Alert.alert('Sign in', 'Sign in first to use AI extraction.');
+      return;
+    }
+    if (caption.trim().length < 10) {
+      Alert.alert('Paste a caption', 'Paste the post caption (10+ chars) so the AI has something to read.');
+      return;
+    }
+    setBusy(true);
+    try {
+      const d = dealer ?? (await ensureDealer(session.user.user_metadata?.name ?? 'Dealer'));
+      await extractFromCaption({
+        dealerId: d.id,
+        caption: caption.trim(),
+        photoUrl: photoUrl.trim() || undefined,
+        source: 'instagram',
+      });
+      nav.navigate('SocialImported');
+    } catch (err: any) {
+      Alert.alert('Extraction failed', err?.message ?? String(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <View style={styles.root}>
       <TopBar
-        title="Importing posts"
-        subtitle="Hang tight, this takes a sec"
+        title="Import a post"
+        subtitle="Paste a caption — AI does the rest"
         leading="close"
         variant="white"
         onBack={() => nav.goBack()}
       />
-      <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>
-        <View style={styles.progressBox}>
-          <View style={styles.progressHead}>
-            <Text style={styles.progressLabel}>PROGRESS</Text>
-            <Text style={styles.progressCount}>34 / 84</Text>
-          </View>
-          <View style={styles.bar}>
-            <View style={styles.barFill} />
-          </View>
-          <Text style={styles.statusText}>
-            <Text style={{ color: T.gold }}>● </Text>
-            Analyzing photo of 2023 Audi RS6 Avant…
-          </Text>
-        </View>
-        <Text style={styles.section}>Activity</Text>
-        <View style={{ gap: 8 }}>
-          {ACTIVITY.map((a, i) => (
-            <View key={i} style={styles.activityRow}>
-              <Icon name={iconFor(a.state)} color={colorFor(a.state)} size={16} strokeWidth={2.4} />
-              <Text style={styles.activityText}>{a.t}</Text>
-              <Text style={styles.activityTime}>{a.s}</Text>
-            </View>
-          ))}
-        </View>
-        <View style={styles.hint}>
+      <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 120 }} keyboardShouldPersistTaps="handled">
+        <Text style={styles.label}>Post caption</Text>
+        <TextInput
+          style={styles.area}
+          placeholder="Paste the Instagram or Facebook caption here…"
+          placeholderTextColor={T.muted}
+          multiline
+          value={caption}
+          onChangeText={setCaption}
+        />
+        <Pressable onPress={() => setCaption(SAMPLE)} style={styles.sampleBtn}>
+          <Icon name="sparkles" color={T.goldDark} size={14} />
+          <Text style={styles.sampleText}>Use a sample caption</Text>
+        </Pressable>
+
+        <Text style={[styles.label, { marginTop: 16 }]}>Photo URL (optional)</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="https://…"
+          placeholderTextColor={T.muted}
+          autoCapitalize="none"
+          autoCorrect={false}
+          value={photoUrl}
+          onChangeText={setPhotoUrl}
+        />
+        <Text style={styles.hint}>Sending a photo lets Claude read the year on the dashboard / number plate.</Text>
+
+        <View style={styles.note}>
           <Icon name="sparkles" color={T.goldDark} size={18} />
-          <Text style={styles.hintText}>
-            <Text style={styles.hintBold}>You can leave this screen.</Text> We'll keep syncing in the background.
+          <Text style={styles.noteText}>
+            <Text style={styles.noteBold}>Tip:</Text> The fuller the caption, the better. Include
+            mileage, price, year, location.
           </Text>
         </View>
       </ScrollView>
-      <View style={[styles.bottom, { paddingBottom: 12 + insets.bottom }]}>
-        <Button variant="ghost" size="md" onPress={() => nav.navigate('SocialImported')}>
-          Run in background
+
+      <View style={[styles.bottom, { paddingBottom: 12 + insets.bottom }, shadow.sticky]}>
+        <Button variant="primary" size="lg" iconRight="sparkles" onPress={run} disabled={busy}>
+          {busy ? <ActivityIndicator color={T.ink} /> : 'Extract with AI'}
         </Button>
       </View>
     </View>
@@ -83,55 +108,65 @@ export function SocialImportingScreen() {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#fff' },
-  progressBox: {
-    padding: 16,
-    borderRadius: 14,
-    backgroundColor: T.ink,
-  },
-  progressHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' },
-  progressLabel: { fontSize: 11, color: 'rgba(255,255,255,0.6)', fontFamily: T.mono, letterSpacing: 0.5 },
-  progressCount: { fontSize: 11, color: T.gold, fontFamily: T.mono, fontWeight: '700' },
-  bar: {
-    height: 8,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    borderRadius: 99,
-    marginTop: 10,
-    overflow: 'hidden',
-  },
-  barFill: { width: '40%', height: '100%', backgroundColor: T.gold, borderRadius: 99 },
-  statusText: { fontSize: 12, color: 'rgba(255,255,255,0.7)', marginTop: 10, fontFamily: T.mono },
-  section: {
-    marginTop: 16,
-    fontSize: 11,
-    color: T.muted,
+  label: {
+    fontSize: 12,
+    color: T.body,
     fontWeight: '700',
-    letterSpacing: 1,
+    letterSpacing: 0.3,
     textTransform: 'uppercase',
-    marginBottom: 10,
+    marginBottom: 6,
     fontFamily: T.font,
   },
-  activityRow: {
-    padding: 12,
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    borderWidth: StyleSheet.hairlineWidth,
+  area: {
+    minHeight: 140,
+    borderWidth: 1.5,
     borderColor: T.hairline,
+    borderRadius: 14,
+    padding: 14,
+    fontFamily: T.font,
+    fontSize: 14,
+    color: T.ink,
+    textAlignVertical: 'top',
+  },
+  input: {
+    height: 48,
+    borderWidth: 1.5,
+    borderColor: T.hairline,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    fontFamily: T.font,
+    fontSize: 14,
+    color: T.ink,
+  },
+  hint: { marginTop: 6, fontSize: 11, color: T.muted, fontFamily: T.font },
+  sampleBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 6,
+    marginTop: 8,
+    alignSelf: 'flex-start',
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    backgroundColor: T.goldTint,
+    borderRadius: 8,
   },
-  activityText: { flex: 1, fontSize: 12, color: T.body, fontFamily: T.font },
-  activityTime: { fontSize: 11, color: T.muted, fontFamily: T.mono },
-  hint: {
+  sampleText: { fontSize: 12, fontWeight: '700', color: T.ink, fontFamily: T.font },
+  note: {
     marginTop: 16,
     padding: 12,
-    borderRadius: 12,
     backgroundColor: T.goldTint,
+    borderRadius: 12,
     flexDirection: 'row',
     gap: 10,
     alignItems: 'center',
   },
-  hintText: { flex: 1, fontSize: 12, color: T.body, fontFamily: T.font },
-  hintBold: { fontWeight: '700', color: T.ink },
-  bottom: { paddingHorizontal: 16, paddingTop: 12 },
+  noteText: { flex: 1, fontSize: 12, color: T.body, lineHeight: 17, fontFamily: T.font },
+  noteBold: { fontWeight: '700', color: T.ink },
+  bottom: {
+    backgroundColor: '#fff',
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: T.hairline,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+  },
 });
