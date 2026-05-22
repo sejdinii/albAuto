@@ -8,6 +8,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { T } from '@/theme/tokens';
 import { Button } from '@/components/Button';
 import { Logo } from '@/components/Logo';
+import { Icon } from '@/components/Icon';
 import { RootStackParamList } from '@/navigation/types';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
@@ -15,8 +16,16 @@ type Nav = NativeStackNavigationProp<RootStackParamList>;
 export function WelcomeScreen() {
   const nav = useNavigation<Nav>();
   const insets = useSafeAreaInsets();
+  const goToApp = () => nav.reset({ index: 0, routes: [{ name: 'Tabs', params: { screen: 'HomeTab' } }] });
   return (
     <View style={styles.root}>
+      <Pressable
+        onPress={goToApp}
+        hitSlop={12}
+        style={[styles.skip, { top: insets.top + 12 }]}
+      >
+        <Icon name="close" color="rgba(255,255,255,0.7)" size={20} strokeWidth={2.2} />
+      </Pressable>
       <View style={styles.hero}>
         <Svg
           viewBox="0 0 400 240"
@@ -60,6 +69,9 @@ export function WelcomeScreen() {
             <Text style={styles.signinLink}>Log in</Text>
           </Pressable>
         </View>
+        <Pressable onPress={goToApp} style={styles.browseRow} hitSlop={6}>
+          <Text style={styles.browseText}>Just browse for now →</Text>
+        </Pressable>
       </View>
     </View>
   );
@@ -116,6 +128,28 @@ const styles = StyleSheet.create({
     color: T.ink,
     fontWeight: '700',
     textDecorationLine: 'underline',
+    fontFamily: T.font,
+  },
+  skip: {
+    position: 'absolute',
+    right: 16,
+    width: 36,
+    height: 36,
+    borderRadius: 99,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+  },
+  browseRow: {
+    alignItems: 'center',
+    marginTop: 14,
+    paddingVertical: 6,
+  },
+  browseText: {
+    fontSize: 12,
+    color: T.muted,
+    fontWeight: '500',
     fontFamily: T.font,
   },
 });
