@@ -22,6 +22,7 @@ export type RootStackParamList = {
   BalkanCities: undefined;
   Continent: undefined;
   EuCountries: undefined;
+  ImportCities: undefined;
   Makes: undefined;
   Models: undefined;
   Listings: undefined;
@@ -36,6 +37,8 @@ export type RootStackParamList = {
   Appointment: { listingId?: string } | undefined;
   Financing: { listingId?: string } | undefined;
 
+  SellCountry: undefined;
+  SellCity: undefined;
   SellForm: undefined;
   SellPhotos: undefined;
   SellSummary: undefined;

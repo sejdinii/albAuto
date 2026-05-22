@@ -30,15 +30,15 @@ export function SellFormScreen() {
     <View style={styles.root}>
       <TopBar
         title="Place an ad"
-        subtitle="Step 2 of 5 · Details"
+        subtitle="Step 4 of 7 · Details"
         leading="close"
         variant="white"
         onBack={() => nav.goBack()}
       />
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 110 }} keyboardShouldPersistTaps="handled">
-        <View style={styles.progress}><View style={[styles.progressFill, { width: '40%' }]} /></View>
+        <View style={styles.progress}><View style={[styles.progressFill, { width: '57%' }]} /></View>
         <Text style={styles.crumb}>
-          MOTORS  ›  CARS  ›  {draft.marketplace === 'balkans' ? 'BALKANS' : 'IMPORT'}
+          MOTORS  ›  CARS  ›  {(draft.city || draft.country).toUpperCase()}
         </Text>
         <Text style={styles.title}>Tell us about your car</Text>
 
@@ -67,26 +67,16 @@ export function SellFormScreen() {
             keyboardType="numeric"
           />
 
-          <Pills
-            label="Country"
-            options={COUNTRIES.map((c) => c.code)}
-            displayMap={Object.fromEntries(COUNTRIES.map((c) => [c.code, c.name]))}
-            value={draft.country}
-            onPick={(v) => {
-              const c = COUNTRIES.find((x) => x.code === v);
-              set('country', v);
-              if (c && !c.cities.includes(draft.city)) set('city', '');
-            }}
-          />
-
-          {cities.length > 0 && (
-            <Pills
-              label="City"
-              options={cities}
-              value={draft.city}
-              onPick={(v) => set('city', v)}
-            />
-          )}
+          <View>
+            <Text style={styles.label}>Location</Text>
+            <Pressable onPress={() => nav.navigate('SellCountry')} style={styles.locationBox}>
+              <Icon name="pin" color={T.muted} size={16} />
+              <Text style={styles.locationText}>
+                {[draft.city, COUNTRIES.find((c) => c.code === draft.country)?.name].filter(Boolean).join(', ') || 'Tap to set location'}
+              </Text>
+              <Text style={styles.locationEdit}>Edit</Text>
+            </Pressable>
+          </View>
 
           <View>
             <Text style={styles.label}>Description</Text>
@@ -215,6 +205,19 @@ const styles = StyleSheet.create({
   pillRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   pill: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 99 },
   pillText: { fontSize: 12, color: T.ink, fontFamily: T.font, textTransform: 'capitalize' },
+  locationBox: {
+    height: 48,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: T.hairline,
+    backgroundColor: '#fff',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  locationText: { flex: 1, fontSize: 14, color: T.ink, fontFamily: T.font, fontWeight: '500' },
+  locationEdit: { fontSize: 12, color: T.ink, fontWeight: '700', fontFamily: T.font },
   bottom: {
     backgroundColor: '#fff',
     borderTopWidth: StyleSheet.hairlineWidth,

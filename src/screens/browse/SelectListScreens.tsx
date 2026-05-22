@@ -109,7 +109,7 @@ export function BalkanCountriesScreen() {
   return (
     <SelectList
       title="Cars within Balkans"
-      subtitle="Step 1 of 4 · Pick a country"
+      subtitle="Step 1 of 6 · Pick a country"
       allLabel="All in Balkan Countries"
       items={items}
       selectedId={filters.country}
@@ -159,7 +159,7 @@ export function BalkanCitiesScreen() {
   return (
     <SelectList
       title={`Cities in ${countryLabel}`}
-      subtitle="Step 2 of 4 · Pick a city"
+      subtitle="Step 2 of 6 · Pick a city"
       allLabel="All cities"
       items={items}
       selectedId={filters.city}
@@ -181,9 +181,9 @@ export function ContinentScreen() {
   const items: ListItem[] = CONTINENTS.map((c) => ({ id: c.name, name: c.name, count: c.count }));
   return (
     <SelectList
-      title="Cars for Import"
-      subtitle="Step 1 of 5 · Pick a continent"
-      allLabel="All continents"
+      title="Cars within Continents"
+      subtitle="Step 1 of 7 · Pick a continent"
+      allLabel="All Continents"
       items={items}
       showSearch={false}
       onPick={(id) => {
@@ -215,12 +215,54 @@ export function EuCountriesScreen() {
   return (
     <SelectList
       title="Cars within Europe"
-      subtitle="Step 2 of 5 · Pick a country"
+      subtitle="Step 2 of 7 · Pick a country"
       allLabel="All in Europe"
       items={items}
       selectedId={filters.country}
       onPick={(id) => {
         patch({ country: id ?? undefined, city: undefined });
+        if (id) nav.navigate('ImportCities');
+        else nav.navigate('Makes');
+      }}
+    />
+  );
+}
+
+// ============================================================
+// IMPORT CITIES (Import flow Step 3)
+// ============================================================
+
+export function ImportCitiesScreen() {
+  const nav = useNavigation<Nav>();
+  const { filters, patch } = useBrowseFilters();
+  const [counts, setCounts] = useState<Record<string, number>>({});
+  const [loading, setLoading] = useState(false);
+
+  const country = filters.country ?? 'DE';
+  const cities = CITIES_BY_COUNTRY[country] ?? ['(no cities yet)'];
+  const countryLabel =
+    Object.entries(COUNTRY_CODE_BY_NAME).find(([, code]) => code === country)?.[0] ?? country;
+
+  useEffect(() => {
+    if (!hasSupabaseConfig) return;
+    setLoading(true);
+    fetchCityCounts(country).then((c) => {
+      setCounts(c);
+      setLoading(false);
+    });
+  }, [country]);
+
+  const items: ListItem[] = cities.map((c) => ({ id: c, name: c, count: counts[c] ?? 0 }));
+
+  return (
+    <SelectList
+      title={`Cars within ${countryLabel}`}
+      subtitle="Step 3 of 7 · Pick a city"
+      allLabel={`All in ${countryLabel}`}
+      items={items}
+      selectedId={filters.city}
+      onPick={(id) => {
+        patch({ city: id ?? undefined });
         nav.navigate('Makes');
       }}
     />

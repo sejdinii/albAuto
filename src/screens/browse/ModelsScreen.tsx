@@ -63,8 +63,8 @@ export function ModelsScreen() {
   return (
     <View style={styles.root}>
       <TopBar
-        title="Select model"
-        subtitle={`${make} · Step 4`}
+        title="Select Model"
+        subtitle={`${make} · Step ${filters.marketplace === 'import' ? 5 : 4}`}
         variant="white"
         onBack={() => nav.goBack()}
       />

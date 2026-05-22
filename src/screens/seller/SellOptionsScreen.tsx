@@ -64,7 +64,7 @@ export function SellOptionsScreen() {
           </View>
           <View style={styles.tierHeader}>
             <Text style={[styles.tierTitle, { color: '#fff' }]}>Top Ad</Text>
-            <Text style={styles.tierPriceGold}>€ 49 / 7 days</Text>
+            <Text style={styles.tierPriceGold}>€ 490 / 7 days</Text>
           </View>
           <Text style={[styles.tierSub, { color: 'rgba(255,255,255,0.6)' }]}>
             Maximum visibility, higher search rank, highlight badge.

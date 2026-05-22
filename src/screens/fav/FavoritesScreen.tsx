@@ -60,7 +60,7 @@ export function FavoritesScreen() {
   return (
     <View style={styles.root}>
       <TopBar
-        title="Saved"
+        title="Favorites"
         leading="none"
         variant="white"
         trailing={<Icon name="filter" color={T.ink} size={20} />}

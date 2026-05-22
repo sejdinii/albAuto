@@ -39,11 +39,14 @@ export function MakesScreen() {
   }
   const letters = Object.keys(grouped).sort();
 
+  const cityLabel = filters.city ?? filters.country ?? '';
+  const title = cityLabel ? `Select Make in ${cityLabel}` : 'Select Make';
+
   return (
     <View style={styles.root}>
       <TopBar
-        title="Select make"
-        subtitle="Step 3 · Make"
+        title={title}
+        subtitle={filters.marketplace === 'import' ? 'Step 4 · Make' : 'Step 3 · Make'}
         variant="white"
         onBack={() => nav.goBack()}
         trailing={

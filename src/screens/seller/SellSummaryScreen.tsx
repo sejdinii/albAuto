@@ -36,7 +36,7 @@ export function SellSummaryScreen() {
     <View style={styles.root}>
       <TopBar
         title="Summary"
-        subtitle="Step 4 of 5 · Review"
+        subtitle="Step 6 of 7 · Review"
         leading="close"
         variant="white"
         onBack={() => nav.goBack()}

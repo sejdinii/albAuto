@@ -65,7 +65,7 @@ export function SellPhotosScreen() {
     <View style={styles.root}>
       <TopBar
         title="Photos & video"
-        subtitle="Step 3 of 5"
+        subtitle="Step 5 of 7"
         leading="close"
         variant="white"
         onBack={() => nav.goBack()}

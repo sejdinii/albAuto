@@ -25,14 +25,14 @@ export function SellTypeScreen() {
     }
     reset();
     set('marketplace', marketplace);
-    nav.navigate('SellForm');
+    nav.navigate('SellCountry');
   };
 
   return (
     <View style={styles.root}>
       <TopBar
-        title="Place an ad"
-        subtitle="Step 1 of 5 · Where"
+        title="Select an Option"
+        subtitle="Where should we place your ad?"
         leading="close"
         variant="white"
         onBack={() => nav.navigate('Tabs', { screen: 'HomeTab' })}

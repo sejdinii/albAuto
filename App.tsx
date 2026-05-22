@@ -25,6 +25,7 @@ import {
   BalkanCitiesScreen,
   ContinentScreen,
   EuCountriesScreen,
+  ImportCitiesScreen,
 } from '@/screens/browse/SelectListScreens';
 import { MakesScreen } from '@/screens/browse/MakesScreen';
 import { ModelsScreen } from '@/screens/browse/ModelsScreen';
@@ -41,6 +42,8 @@ import { RecentScreen } from '@/screens/profile/RecentScreen';
 import { AppointmentScreen } from '@/screens/profile/AppointmentScreen';
 import { FinancingScreen } from '@/screens/profile/FinancingScreen';
 
+import { SellCountryScreen } from '@/screens/seller/SellCountryScreen';
+import { SellCityScreen } from '@/screens/seller/SellCityScreen';
 import { SellFormScreen } from '@/screens/seller/SellFormScreen';
 import { SellPhotosScreen } from '@/screens/seller/SellPhotosScreen';
 import { SellSummaryScreen } from '@/screens/seller/SellSummaryScreen';
@@ -82,6 +85,7 @@ export default function App() {
             <Stack.Screen name="BalkanCities" component={BalkanCitiesScreen} />
             <Stack.Screen name="Continent" component={ContinentScreen} />
             <Stack.Screen name="EuCountries" component={EuCountriesScreen} />
+            <Stack.Screen name="ImportCities" component={ImportCitiesScreen} />
             <Stack.Screen name="Makes" component={MakesScreen} />
             <Stack.Screen name="Models" component={ModelsScreen} />
             <Stack.Screen name="Listings" component={ListingsScreen} />
@@ -96,6 +100,8 @@ export default function App() {
             <Stack.Screen name="Appointment" component={AppointmentScreen} />
             <Stack.Screen name="Financing" component={FinancingScreen} />
 
+            <Stack.Screen name="SellCountry" component={SellCountryScreen} options={{ presentation: 'modal' }} />
+            <Stack.Screen name="SellCity" component={SellCityScreen} options={{ presentation: 'modal' }} />
             <Stack.Screen name="SellForm" component={SellFormScreen} options={{ presentation: 'modal' }} />
             <Stack.Screen name="SellPhotos" component={SellPhotosScreen} options={{ presentation: 'modal' }} />
             <Stack.Screen name="SellSummary" component={SellSummaryScreen} options={{ presentation: 'modal' }} />
